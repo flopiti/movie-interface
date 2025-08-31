@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for the API
-const BASE_URL = 'http://natetrystuff.com:5000';
+const BASE_URL = 'http://192.168.1.10:5000';
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
@@ -69,34 +69,42 @@ export const api = {
   },
 
   // DELETE request
-  delete: async (endpoint) => {
+  delete: async (endpoint, data = {}) => {
     try {
-      const response = await apiClient.delete(endpoint);
+      const response = await apiClient.delete(endpoint, { data });
       return response.data;
     } catch (error) {
       throw new Error(`DELETE ${endpoint} failed: ${error.message}`);
     }
   },
 
-  // Example movie-related API calls
+  // Movie file management API calls
+  moviePaths: {
+    // Get all configured movie file paths
+    getAll: () => api.get('/movie-file-paths'),
+    
+    // Add a new movie file path
+    add: (path) => api.put('/movie-file-paths', { path }),
+    
+    // Remove a movie file path
+    remove: (path) => api.delete('/movie-file-paths', { path }),
+  },
+
+  // Movie files API calls
+  files: {
+    // Get all media files from all configured paths
+    getAll: () => api.get('/all-files'),
+  },
+
+  // Movie search API calls
   movies: {
-    // Get all movies
-    getAll: () => api.get('/movies'),
-    
-    // Get movie by ID
-    getById: (id) => api.get(`/movies/${id}`),
-    
-    // Search movies
-    search: (query) => api.get('/movies/search', { q: query }),
-    
-    // Create new movie
-    create: (movieData) => api.post('/movies', movieData),
-    
-    // Update movie
-    update: (id, movieData) => api.put(`/movies/${id}`, movieData),
-    
-    // Delete movie
-    delete: (id) => api.delete(`/movies/${id}`),
+    // Search movies using TMDB API
+    search: (query) => api.get('/search-movie', { q: query }),
+  },
+
+  // Health check
+  health: {
+    check: () => api.get('/health'),
   },
 };
 

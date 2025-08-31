@@ -4,7 +4,7 @@
   "description": "A React app with API client for movie interface",
   "main": "src/index.js",
   "scripts": {
-    "start": "webpack serve --mode development --open",
+    "start": "webpack serve --mode development",
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development"
   },

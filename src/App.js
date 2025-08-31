@@ -3,34 +3,48 @@ import { api } from './apiClient';
 import './App.css';
 
 const App = () => {
-  const [movies, setMovies] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [moviePaths, setMoviePaths] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [newPath, setNewPath] = useState('');
+  const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'search'
 
-  // Fetch movies on component mount
+  // Fetch data on component mount
   useEffect(() => {
-    fetchMovies();
+    fetchFiles();
+    fetchMoviePaths();
   }, []);
 
-  const fetchMovies = async () => {
+  const fetchFiles = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.movies.getAll();
-      setMovies(data);
+      const data = await api.files.getAll();
+      setFiles(data.files || []);
     } catch (err) {
-      setError('Failed to fetch movies: ' + err.message);
-      console.error('Error fetching movies:', err);
+      setError('Failed to fetch files: ' + err.message);
+      console.error('Error fetching files:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMoviePaths = async () => {
+    try {
+      const data = await api.moviePaths.getAll();
+      setMoviePaths(data.movie_file_paths || []);
+    } catch (err) {
+      console.error('Error fetching movie paths:', err);
     }
   };
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
-      fetchMovies();
+      setSearchResults([]);
       return;
     }
 
@@ -38,7 +52,7 @@ const App = () => {
     setError(null);
     try {
       const data = await api.movies.search(searchQuery);
-      setMovies(data);
+      setSearchResults(data.results || []);
     } catch (err) {
       setError('Search failed: ' + err.message);
       console.error('Error searching movies:', err);
@@ -47,37 +61,81 @@ const App = () => {
     }
   };
 
+  const handleAddPath = async (e) => {
+    e.preventDefault();
+    if (!newPath.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      await api.moviePaths.add(newPath.trim());
+      setNewPath('');
+      await fetchMoviePaths();
+      await fetchFiles(); // Refresh files after adding path
+    } catch (err) {
+      setError('Failed to add path: ' + err.message);
+      console.error('Error adding path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemovePath = async (path) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.moviePaths.remove(path);
+      await fetchMoviePaths();
+      await fetchFiles(); // Refresh files after removing path
+    } catch (err) {
+      setError('Failed to remove path: ' + err.message);
+      console.error('Error removing path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
     setSearchQuery('');
-    fetchMovies();
+    setSearchResults([]);
+    fetchFiles();
+    fetchMoviePaths();
   };
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Movie Interface</h1>
-        <p>Connected to natetrystuff.com:5000</p>
+        <div>
+          <h1>Movie Management Interface</h1>
+          <p>Connected to natetrystuff.com:5000</p>
+        </div>
+        <button onClick={handleRefresh} className="refresh-button">
+          Refresh All
+        </button>
       </header>
 
       <main className="app-main">
-        {/* Search Form */}
-        <section className="search-section">
-          <form onSubmit={handleSearch} className="search-form">
-            <input
-              type="text"
-              placeholder="Search movies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-            <button type="submit" className="search-button">
-              Search
-            </button>
-            <button type="button" onClick={handleRefresh} className="refresh-button">
-              Refresh
-            </button>
-          </form>
-        </section>
+        {/* Navigation Tabs */}
+        <nav className="nav-tabs">
+          <button 
+            className={activeTab === 'files' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('files')}
+          >
+            Media Files ({files.length})
+          </button>
+          <button 
+            className={activeTab === 'paths' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('paths')}
+          >
+            Movie Paths ({moviePaths.length})
+          </button>
+          <button 
+            className={activeTab === 'search' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('search')}
+          >
+            TMDB Search
+          </button>
+        </nav>
 
         {/* Loading State */}
         {loading && (
@@ -96,39 +154,154 @@ const App = () => {
           </div>
         )}
 
-        {/* Movies List */}
-        {!loading && !error && (
-          <section className="movies-section">
-            <h2>Movies ({movies.length})</h2>
-            {movies.length === 0 ? (
-              <p className="no-movies">No movies found</p>
-            ) : (
-              <div className="movies-grid">
-                {movies.map((movie, index) => (
-                  <MovieCard key={movie.id || index} movie={movie} />
-                ))}
-              </div>
+        {/* Tab Content */}
+        {!loading && (
+          <>
+            {/* Media Files Tab */}
+            {activeTab === 'files' && (
+              <section className="files-section">
+                <h2>Media Files ({files.length})</h2>
+                {files.length === 0 ? (
+                  <p className="no-files">No media files found. Add movie paths first.</p>
+                ) : (
+                  <div className="files-grid">
+                    {files.map((file, index) => (
+                      <FileCard key={index} file={file} />
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
-          </section>
+
+            {/* Movie Paths Tab */}
+            {activeTab === 'paths' && (
+              <section className="paths-section">
+                <h2>Movie Paths</h2>
+                
+                {/* Add Path Form */}
+                <form onSubmit={handleAddPath} className="add-path-form">
+                  <input
+                    type="text"
+                    placeholder="Enter directory path..."
+                    value={newPath}
+                    onChange={(e) => setNewPath(e.target.value)}
+                    className="path-input"
+                  />
+                  <button type="submit" className="add-button">
+                    Add Path
+                  </button>
+                </form>
+
+                {/* Paths List */}
+                {moviePaths.length === 0 ? (
+                  <p className="no-paths">No movie paths configured</p>
+                ) : (
+                  <div className="paths-list">
+                    {moviePaths.map((path, index) => (
+                      <div key={index} className="path-item">
+                        <span className="path-text">{path}</span>
+                        <button 
+                          onClick={() => handleRemovePath(path)}
+                          className="remove-button"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Search Tab */}
+            {activeTab === 'search' && (
+              <section className="search-section">
+                <h2>TMDB Movie Search</h2>
+                
+                <form onSubmit={handleSearch} className="search-form">
+                  <input
+                    type="text"
+                    placeholder="Search movies on TMDB..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="search-input"
+                  />
+                  <button type="submit" className="search-button">
+                    Search
+                  </button>
+                </form>
+
+                {searchResults.length > 0 && (
+                  <div className="search-results">
+                    <h3>Search Results ({searchResults.length})</h3>
+                    <div className="movies-grid">
+                      {searchResults.map((movie, index) => (
+                        <MovieCard key={movie.id || index} movie={movie} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+          </>
         )}
       </main>
     </div>
   );
 };
 
-// Movie Card Component
+// File Card Component
+const FileCard = ({ file }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  return (
+    <div className="file-card">
+      <h3 className="file-name">{file.name}</h3>
+      <p className="file-path">{file.path}</p>
+      <div className="file-details">
+        <span className="file-size">{formatFileSize(file.size)}</span>
+        <span className="file-modified">Modified: {formatDate(file.modified)}</span>
+      </div>
+      <p className="file-directory">Directory: {file.directory}</p>
+      {file.source_path && (
+        <p className="file-source">Source: {file.source_path}</p>
+      )}
+    </div>
+  );
+};
+
+// Movie Card Component (for TMDB search results)
 const MovieCard = ({ movie }) => {
   return (
     <div className="movie-card">
+      {movie.poster_path && (
+        <img 
+          src={`https://image.tmdb.org/t/p/w200${movie.poster_path}`}
+          alt={movie.title}
+          className="movie-poster"
+        />
+      )}
       <h3 className="movie-title">
         {movie.title || movie.name || 'Unknown Title'}
       </h3>
-      {movie.year && <p className="movie-year">Year: {movie.year}</p>}
-      {movie.genre && <p className="movie-genre">Genre: {movie.genre}</p>}
-      {movie.director && <p className="movie-director">Director: {movie.director}</p>}
-      {movie.rating && <p className="movie-rating">Rating: {movie.rating}</p>}
-      {movie.description && (
-        <p className="movie-description">{movie.description}</p>
+      {movie.release_date && (
+        <p className="movie-year">Year: {new Date(movie.release_date).getFullYear()}</p>
+      )}
+      {movie.vote_average && (
+        <p className="movie-rating">Rating: {movie.vote_average}/10</p>
+      )}
+      {movie.overview && (
+        <p className="movie-description">{movie.overview}</p>
       )}
     </div>
   );
