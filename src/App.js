@@ -11,6 +11,9 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newPath, setNewPath] = useState('');
   const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'search'
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [movieSearchResults, setMovieSearchResults] = useState([]);
+  const [isSearchingMovie, setIsSearchingMovie] = useState(false);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -102,6 +105,41 @@ const App = () => {
     fetchMoviePaths();
   };
 
+  const handleFindMovie = async (file) => {
+    setIsSearchingMovie(true);
+    setMovieSearchResults([]);
+    try {
+      // Extract movie name from filename for search
+      const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
+      const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+      
+      const data = await api.movies.search(searchTerm);
+      setMovieSearchResults(data.results || []);
+    } catch (err) {
+      setError('Movie search failed: ' + err.message);
+      console.error('Error searching movies:', err);
+    } finally {
+      setIsSearchingMovie(false);
+    }
+  };
+
+  const handleAcceptMovie = (movie) => {
+    if (!selectedFile) return;
+    
+    // Update the file with the selected movie information
+    setFiles(prevFiles => 
+      prevFiles.map(file => 
+        file === selectedFile 
+          ? { ...file, movie: movie }
+          : file
+      )
+    );
+    
+    // Clear selection and search results
+    setSelectedFile(null);
+    setMovieSearchResults([]);
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -164,11 +202,15 @@ const App = () => {
                 {files.length === 0 ? (
                   <p className="no-files">No media files found. Add movie paths first.</p>
                 ) : (
-                  <div className="files-grid">
-                    {files.map((file, index) => (
-                      <FileCard key={index} file={file} />
-                    ))}
-                  </div>
+                  <FilesTable 
+                    files={files} 
+                    selectedFile={selectedFile}
+                    setSelectedFile={setSelectedFile}
+                    onFindMovie={handleFindMovie}
+                    onAcceptMovie={handleAcceptMovie}
+                    movieSearchResults={movieSearchResults}
+                    isSearchingMovie={isSearchingMovie}
+                  />
                 )}
               </section>
             )}
@@ -246,6 +288,110 @@ const App = () => {
           </>
         )}
       </main>
+    </div>
+  );
+};
+
+// Files Table Component
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, movieSearchResults, isSearchingMovie }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  const handleRowClick = (file) => {
+    setSelectedFile(selectedFile === file ? null : file);
+  };
+
+  return (
+    <div className="files-table-container">
+      <table className="files-table">
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Size</th>
+            <th>Modified</th>
+            <th>Directory</th>
+            <th>Movie</th>
+          </tr>
+        </thead>
+        <tbody>
+          {files.map((file, index) => (
+            <React.Fragment key={index}>
+              <tr 
+                className={`file-row ${selectedFile === file ? 'selected' : ''}`}
+                onClick={() => handleRowClick(file)}
+              >
+                <td className="file-name-cell">{file.name}</td>
+                <td>{formatFileSize(file.size)}</td>
+                <td>{formatDate(file.modified)}</td>
+                <td className="directory-cell">{file.directory}</td>
+                <td className="movie-cell">
+                  {file.movie ? (
+                    <div className="movie-info">
+                      <strong>{file.movie.title}</strong>
+                      {file.movie.release_date && (
+                        <span className="movie-year"> ({new Date(file.movie.release_date).getFullYear()})</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="no-movie">No movie assigned</span>
+                  )}
+                </td>
+              </tr>
+              {selectedFile === file && (
+                <tr className="action-row">
+                  <td colSpan="5">
+                    <div className="action-buttons">
+                      <button 
+                        className="find-movie-btn"
+                        onClick={() => onFindMovie(file)}
+                        disabled={isSearchingMovie}
+                      >
+                        {isSearchingMovie ? 'Searching...' : 'Find Movie'}
+                      </button>
+                      
+                      {movieSearchResults.length > 0 && (
+                        <div className="movie-suggestions">
+                          <h4>Movie Suggestions:</h4>
+                          <div className="suggestions-list">
+                            {movieSearchResults.slice(0, 3).map((movie, idx) => (
+                              <div key={movie.id || idx} className="movie-suggestion">
+                                <div className="movie-suggestion-info">
+                                  <strong>{movie.title}</strong>
+                                  {movie.release_date && (
+                                    <span className="movie-year"> ({new Date(movie.release_date).getFullYear()})</span>
+                                  )}
+                                  {movie.vote_average && (
+                                    <span className="movie-rating"> - Rating: {movie.vote_average}/10</span>
+                                  )}
+                                </div>
+                                <button 
+                                  className="accept-movie-btn"
+                                  onClick={() => onAcceptMovie(movie)}
+                                >
+                                  Accept
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
