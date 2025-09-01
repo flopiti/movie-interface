@@ -17,6 +17,8 @@ const App = () => {
   const [searchedFile, setSearchedFile] = useState(null);
   const [acceptingMovieId, setAcceptingMovieId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [renamingFileId, setRenamingFileId] = useState(null);
+  const [renamingFolderId, setRenamingFolderId] = useState(null);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -284,8 +286,10 @@ const App = () => {
   };
 
   const handleRenameFile = async (file, newFilename) => {
-    setLoading(true);
+    const fileId = file.path; // Use file path as unique identifier
+    setRenamingFileId(fileId);
     setError(null);
+    setSuccessMessage('');
     
     try {
       // Send the rename request to the backend
@@ -305,18 +309,28 @@ const App = () => {
         )
       );
       
+      // Show success message
+      setSuccessMessage(`Successfully renamed file to "${newFilename}"`);
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
       console.log(`Successfully renamed file to "${newFilename}"`);
     } catch (err) {
       setError('Failed to rename file: ' + err.message);
       console.error('Error renaming file:', err);
     } finally {
-      setLoading(false);
+      setRenamingFileId(null);
     }
   };
 
   const handleRenameFolder = async (file, newFoldername) => {
-    setLoading(true);
+    const folderId = file.folderInfo.current_folder_path; // Use folder path as unique identifier
+    setRenamingFolderId(folderId);
     setError(null);
+    setSuccessMessage('');
     
     try {
       // Send the folder rename request to the backend
@@ -343,12 +357,20 @@ const App = () => {
         })
       );
       
+      // Show success message
+      setSuccessMessage(`Successfully renamed folder to "${newFoldername}"`);
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
       console.log(`Successfully renamed folder to "${newFoldername}"`);
     } catch (err) {
       setError('Failed to rename folder: ' + err.message);
       console.error('Error renaming folder:', err);
     } finally {
-      setLoading(false);
+      setRenamingFolderId(null);
     }
   };
 
@@ -467,6 +489,8 @@ const App = () => {
                     searchedFile={searchedFile}
                     acceptingMovieId={acceptingMovieId}
                     successMessage={successMessage}
+                    renamingFileId={renamingFileId}
+                    renamingFolderId={renamingFolderId}
                     onClearSearchResults={handleClearSearchResults}
                   />
                 )}
@@ -551,7 +575,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, onClearSearchResults }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, onClearSearchResults }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -637,8 +661,13 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
 
                       {/* Filename Information Display */}
                       {file.movie && file.filenameInfo && (
-                        <div className="filename-info">
+                        <div className={`filename-info ${renamingFileId === file.path ? 'renaming' : ''}`}>
                           <h4>Filename Information:</h4>
+                          {successMessage && successMessage.includes('renamed file') && (
+                            <div className="success-message">
+                              ✓ {successMessage}
+                            </div>
+                          )}
                           <div className="filename-comparison">
                             <div className="current-filename">
                               <strong>Current:</strong> <span className="filename">{file.filenameInfo.current_filename}</span>
@@ -651,8 +680,9 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                                 <button 
                                   className="rename-btn"
                                   onClick={() => onRenameFile(file, file.filenameInfo.standard_filename)}
+                                  disabled={renamingFileId !== null || renamingFolderId !== null}
                                 >
-                                  Rename File to Standard Format
+                                  {renamingFileId === file.path ? 'Renaming File...' : 'Rename File to Standard Format'}
                                 </button>
                               </div>
                             )}
@@ -667,8 +697,13 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
 
                       {/* Folder Information Display */}
                       {file.movie && file.folderInfo && (
-                        <div className="folder-info">
+                        <div className={`folder-info ${renamingFolderId === file.folderInfo.current_folder_path ? 'renaming' : ''}`}>
                           <h4>Folder Information:</h4>
+                          {successMessage && successMessage.includes('renamed folder') && (
+                            <div className="success-message">
+                              ✓ {successMessage}
+                            </div>
+                          )}
                           <div className="folder-comparison">
                             <div className="current-foldername">
                               <strong>Current:</strong> <span className="foldername">{file.folderInfo.current_foldername}</span>
@@ -681,8 +716,9 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                                 <button 
                                   className="rename-folder-btn"
                                   onClick={() => onRenameFolder(file, file.folderInfo.standard_foldername)}
+                                  disabled={renamingFileId !== null || renamingFolderId !== null}
                                 >
-                                  Rename Folder to Standard Format
+                                  {renamingFolderId === file.folderInfo.current_folder_path ? 'Renaming Folder...' : 'Rename Folder to Standard Format'}
                                 </button>
                               </div>
                             )}
