@@ -117,6 +117,12 @@ export const api = {
       file_path: currentPath,
       new_filename: newFilename
     }),
+
+    // Rename a folder to standard format
+    renameFolder: (currentFolderPath, newFoldername) => api.post('/rename-folder', {
+      folder_path: currentFolderPath,
+      new_foldername: newFoldername
+    }),
   },
 
   // Health check

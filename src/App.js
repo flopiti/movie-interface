@@ -137,14 +137,15 @@ const App = () => {
       // Send the assignment to the backend
       const response = await api.movies.assign(selectedFile.path, movie);
       
-      // Update the file with the selected movie information and filename info
+      // Update the file with the selected movie information, filename info, and folder info
       setFiles(prevFiles => 
         prevFiles.map(file => 
           file === selectedFile 
             ? { 
                 ...file, 
                 movie: movie,
-                filenameInfo: response.filenameInfo
+                filenameInfo: response.filenameInfo,
+                folderInfo: response.folderInfo
               }
             : file
         )
@@ -220,6 +221,44 @@ const App = () => {
     }
   };
 
+  const handleRenameFolder = async (file, newFoldername) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Send the folder rename request to the backend
+      const response = await api.movies.renameFolder(file.folderInfo.current_folder_path, newFoldername);
+      
+      // Update all files that were in the renamed folder
+      setFiles(prevFiles => 
+        prevFiles.map(f => {
+          // Check if this file was in the renamed folder
+          if (f.directory === file.folderInfo.current_folder_path || 
+              f.path.startsWith(file.folderInfo.current_folder_path + '/')) {
+            // Update the file's path and directory to reflect the new folder name
+            const newPath = f.path.replace(file.folderInfo.current_folder_path, response.new_path);
+            const newDirectory = f.directory.replace(file.folderInfo.current_folder_path, response.new_path);
+            
+            return {
+              ...f,
+              path: newPath,
+              directory: newDirectory,
+              folderInfo: f.folderInfo ? undefined : f.folderInfo // Clear folder info since it's now standard
+            };
+          }
+          return f;
+        })
+      );
+      
+      console.log(`Successfully renamed folder to "${newFoldername}"`);
+    } catch (err) {
+      setError('Failed to rename folder: ' + err.message);
+      console.error('Error renaming folder:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -290,6 +329,7 @@ const App = () => {
                     onAcceptMovie={handleAcceptMovie}
                     onRemoveMovieAssignment={handleRemoveMovieAssignment}
                     onRenameFile={handleRenameFile}
+                    onRenameFolder={handleRenameFolder}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                   />
@@ -375,7 +415,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, movieSearchResults, isSearchingMovie }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, movieSearchResults, isSearchingMovie }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -468,13 +508,43 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                                   className="rename-btn"
                                   onClick={() => onRenameFile(file, file.filenameInfo.standard_filename)}
                                 >
-                                  Rename to Standard Format
+                                  Rename File to Standard Format
                                 </button>
                               </div>
                             )}
                             {!file.filenameInfo.needs_rename && (
                               <div className="filename-status">
                                 <span className="status-good">✓ Filename is already in standard format</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Folder Information Display */}
+                      {file.movie && file.folderInfo && (
+                        <div className="folder-info">
+                          <h4>Folder Information:</h4>
+                          <div className="folder-comparison">
+                            <div className="current-foldername">
+                              <strong>Current:</strong> <span className="foldername">{file.folderInfo.current_foldername}</span>
+                            </div>
+                            <div className="standard-foldername">
+                              <strong>Standard:</strong> <span className="foldername">{file.folderInfo.standard_foldername}</span>
+                            </div>
+                            {file.folderInfo.needs_rename && (
+                              <div className="rename-action">
+                                <button 
+                                  className="rename-folder-btn"
+                                  onClick={() => onRenameFolder(file, file.folderInfo.standard_foldername)}
+                                >
+                                  Rename Folder to Standard Format
+                                </button>
+                              </div>
+                            )}
+                            {!file.folderInfo.needs_rename && (
+                              <div className="folder-status">
+                                <span className="status-good">✓ Folder is already in standard format</span>
                               </div>
                             )}
                           </div>
