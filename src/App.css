@@ -412,6 +412,38 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* File row deletion animation */
+.file-row.deleting {
+  animation: fadeOutRow 0.4s ease-out forwards;
+  pointer-events: none;
+}
+
+.action-row.deleting {
+  animation: fadeOutRow 0.4s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes fadeOutRow {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 100px;
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
 .files-table thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -565,84 +597,7 @@
   opacity: 0.6;
 }
 
-/* Delete Confirmation */
-.delete-confirmation {
-  background-color: #fff5f5;
-  border: 2px solid #fc8181;
-  border-radius: 8px;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: slideIn 0.3s ease-out;
-}
 
-.delete-warning {
-  color: #c53030;
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.delete-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.confirm-delete-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #dc3545;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.confirm-delete-btn:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-.confirm-delete-btn:disabled {
-  background-color: #a0aec0;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.cancel-delete-btn {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background-color: #f7fafc;
-  color: #4a5568;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.cancel-delete-btn:hover:not(:disabled) {
-  background-color: #edf2f7;
-  border-color: #cbd5e0;
-}
-
-.cancel-delete-btn:disabled {
-  background-color: #f1f5f9;
-  color: #a0aec0;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* Delete Success Message */
-.delete-success {
-  background-color: #f0fff4 !important;
-  border-color: #48bb78 !important;
-  color: #22543d !important;
-}
 
 /* Filename Information */
 .filename-info {
