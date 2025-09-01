@@ -14,6 +14,7 @@ const App = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [movieSearchResults, setMovieSearchResults] = useState([]);
   const [isSearchingMovie, setIsSearchingMovie] = useState(false);
+  const [searchedFile, setSearchedFile] = useState(null);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -192,6 +193,7 @@ const App = () => {
   const handleFindMovie = async (file) => {
     setIsSearchingMovie(true);
     setMovieSearchResults([]);
+    setSearchedFile(file);
     try {
       // Extract movie name from filename for search
       const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
@@ -233,9 +235,10 @@ const App = () => {
         )
       );
       
-      // Clear selection and search results
+      // Clear selection and search results after assignment
       setSelectedFile(null);
       setMovieSearchResults([]);
+      setSearchedFile(null);
       
       console.log(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
     } catch (err) {
@@ -360,7 +363,6 @@ const App = () => {
       // Clear selection if this file was selected
       if (selectedFile === file) {
         setSelectedFile(null);
-        setMovieSearchResults([]);
       }
       
       console.log(`Successfully deleted file: "${response.file_name}" (${response.file_size} bytes)`);
@@ -373,6 +375,11 @@ const App = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearSearchResults = () => {
+    setMovieSearchResults([]);
+    setSearchedFile(null);
   };
 
   return (
@@ -449,6 +456,8 @@ const App = () => {
                     onDeleteFile={handleDeleteFile}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
+                    searchedFile={searchedFile}
+                    onClearSearchResults={handleClearSearchResults}
                   />
                 )}
               </section>
@@ -532,7 +541,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, onClearSearchResults }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -676,7 +685,7 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                         </div>
                       )}
                       
-                      {movieSearchResults.length > 0 && (
+                      {movieSearchResults.length > 0 && searchedFile === file && (
                         <div className="movie-suggestions">
                           <h4>Movie Suggestions:</h4>
                           <div className="suggestions-list">
