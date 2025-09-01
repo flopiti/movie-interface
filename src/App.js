@@ -7,6 +7,7 @@ const App = () => {
   const [moviePaths, setMoviePaths] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingFiles, setFetchingFiles] = useState(false); // Separate state for file fetching during autoprocess
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPath, setNewPath] = useState('');
@@ -23,7 +24,28 @@ const App = () => {
   const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState(-1);
   const [autoProcessResults, setAutoProcessResults] = useState([]);
+  const [processingFiles, setProcessingFiles] = useState(new Set()); // Track which files are currently being processed
+  const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
   const processingRef = useRef(false);
+
+  // Helper function to update selected file reference when files array changes
+  useEffect(() => {
+    if (selectedFile) {
+      // Find the updated file object by path to maintain selection
+      const updatedFile = files.find(f => f.path === selectedFile.path);
+      if (updatedFile && updatedFile !== selectedFile) {
+        setSelectedFile(updatedFile);
+      }
+    }
+    
+    if (searchedFile) {
+      // Find the updated file object by path to maintain search context
+      const updatedFile = files.find(f => f.path === searchedFile.path);
+      if (updatedFile && updatedFile !== searchedFile) {
+        setSearchedFile(updatedFile);
+      }
+    }
+  }, [files, selectedFile, searchedFile]);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -92,8 +114,13 @@ const App = () => {
     };
   };
 
-  const fetchFiles = async () => {
-    setLoading(true);
+  const fetchFiles = async (duringAutoProcess = false) => {
+    // Use separate loading state during autoprocessing to avoid hiding UI
+    if (duringAutoProcess) {
+      setFetchingFiles(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await api.files.getAll();
@@ -123,7 +150,11 @@ const App = () => {
       setError('Failed to fetch files: ' + err.message);
       console.error('Error fetching files:', err);
     } finally {
-      setLoading(false);
+      if (duringAutoProcess) {
+        setFetchingFiles(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -421,6 +452,8 @@ const App = () => {
       processingRef.current = false;
       setIsAutoProcessing(false);
       setCurrentProcessingIndex(-1);
+      setProcessingFiles(new Set());
+      setCompletedFiles(new Set());
       return;
     }
 
@@ -429,18 +462,20 @@ const App = () => {
     setIsAutoProcessing(true);
     setCurrentProcessingIndex(0);
     setAutoProcessResults([]);
+    setProcessingFiles(new Set());
+    setCompletedFiles(new Set());
     setError(null);
 
     const unprocessedFiles = files.filter(file => !file.movie);
+    const CONCURRENCY_LIMIT = 3; // Process up to 3 files simultaneously
     
-    for (let i = 0; i < unprocessedFiles.length; i++) {
-      // Check if processing was stopped
-      if (!processingRef.current) {
-        break;
-      }
-
-      const file = unprocessedFiles[i];
-      setCurrentProcessingIndex(i);
+    // Function to process a single file
+    const processFile = async (file, index) => {
+      if (!processingRef.current) return;
+      
+      // Mark file as being processed
+      setProcessingFiles(prev => new Set([...prev, file.path]));
+      setCurrentProcessingIndex(index);
 
       try {
         // Search for movie
@@ -456,55 +491,61 @@ const App = () => {
           // Assign the movie
           const assignResponse = await api.movies.assign(file.path, bestMatch);
           
-          // Update the file with movie info
-          const updatedFile = {
-            ...file,
-            movie: bestMatch,
-            filenameInfo: assignResponse.filenameInfo,
-            folderInfo: assignResponse.folderInfo
-          };
+          // Keep track of current file path (it might change during renaming)
+          let currentFilePath = file.path;
           
+          // Update the file with movie assignment first
           setFiles(prevFiles => 
-            prevFiles.map(f => f.path === file.path ? updatedFile : f)
+            prevFiles.map(f => 
+              f.path === currentFilePath 
+                ? { 
+                    ...f, 
+                    movie: bestMatch,
+                    filenameInfo: assignResponse.filenameInfo,
+                    folderInfo: assignResponse.folderInfo
+                  }
+                : f
+            )
           );
           
           // If filename needs renaming, do it
           if (assignResponse.filenameInfo?.needs_rename) {
-            await api.movies.renameFile(file.path, assignResponse.filenameInfo.standard_filename);
-            
-            // Update file path and clear filename info
-            const renamedFile = {
-              ...updatedFile,
-              path: assignResponse.filenameInfo.standard_filename,
-              name: assignResponse.filenameInfo.standard_filename.split('/').pop(),
-              filenameInfo: undefined
-            };
-            
+            const renameResponse = await api.movies.renameFile(currentFilePath, assignResponse.filenameInfo.standard_filename);
+            // Update the file path and name after renaming
             setFiles(prevFiles => 
-              prevFiles.map(f => f.path === file.path ? renamedFile : f)
+              prevFiles.map(f => 
+                f.path === currentFilePath 
+                  ? { 
+                      ...f, 
+                      path: renameResponse.new_path,
+                      name: assignResponse.filenameInfo.standard_filename,
+                      filenameInfo: undefined // Clear since it's now standard
+                    }
+                  : f
+              )
             );
+            currentFilePath = renameResponse.new_path; // Update our reference
           }
           
           // If folder needs renaming, do it
           if (assignResponse.folderInfo?.needs_rename) {
-            const renameResponse = await api.movies.renameFolder(
+            const folderRenameResponse = await api.movies.renameFolder(
               assignResponse.folderInfo.current_folder_path, 
               assignResponse.folderInfo.standard_foldername
             );
-            
-            // Update all files in the renamed folder
+            // Update all files that were in the renamed folder
             setFiles(prevFiles => 
               prevFiles.map(f => {
                 if (f.directory === assignResponse.folderInfo.current_folder_path || 
                     f.path.startsWith(assignResponse.folderInfo.current_folder_path + '/')) {
-                  const newPath = f.path.replace(assignResponse.folderInfo.current_folder_path, renameResponse.new_path);
-                  const newDirectory = f.directory.replace(assignResponse.folderInfo.current_folder_path, renameResponse.new_path);
+                  const newPath = f.path.replace(assignResponse.folderInfo.current_folder_path, folderRenameResponse.new_path);
+                  const newDirectory = f.directory.replace(assignResponse.folderInfo.current_folder_path, folderRenameResponse.new_path);
                   
                   return {
                     ...f,
                     path: newPath,
                     directory: newDirectory,
-                    folderInfo: undefined
+                    folderInfo: f.folderInfo ? undefined : f.folderInfo // Clear folder info since it's now standard
                   };
                 }
                 return f;
@@ -525,9 +566,6 @@ const App = () => {
           }]);
         }
         
-        // Small delay between files to avoid overwhelming the API
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err);
         setAutoProcessResults(prev => [...prev, {
@@ -537,15 +575,53 @@ const App = () => {
           error: err.message
         }]);
         
-        // Continue with next file even if one fails
-        continue;
+        // If this is a critical error that might affect the entire process, stop
+        if (err.message.includes('network') || err.message.includes('timeout')) {
+          setError(`Auto-processing stopped due to network error: ${err.message}`);
+          processingRef.current = false;
+        }
+      } finally {
+        // Mark file as completed
+        setProcessingFiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(file.path);
+          return newSet;
+        });
+        setCompletedFiles(prev => new Set([...prev, file.path]));
       }
+    };
+
+    // Process files in parallel with concurrency limit
+    const processInBatches = async (files, batchSize) => {
+      for (let i = 0; i < files.length; i += batchSize) {
+        if (!processingRef.current) break;
+        
+        const batch = files.slice(i, i + batchSize);
+        const promises = batch.map((file, batchIndex) => 
+          processFile(file, i + batchIndex)
+        );
+        
+        await Promise.allSettled(promises);
+        
+        // Small delay between batches to avoid overwhelming the API
+        if (i + batchSize < files.length && processingRef.current) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+    };
+
+    try {
+      await processInBatches(unprocessedFiles, CONCURRENCY_LIMIT);
+    } catch (err) {
+      setError(`Auto-processing failed: ${err.message}`);
+      console.error('Auto-processing error:', err);
     }
     
     // Processing complete
     processingRef.current = false;
     setIsAutoProcessing(false);
     setCurrentProcessingIndex(-1);
+    setProcessingFiles(new Set());
   };
 
   return (
@@ -584,7 +660,7 @@ const App = () => {
         </nav>
 
         {/* Loading State */}
-        {loading && (
+        {loading && !isAutoProcessing && (
           <div className="loading">
             <p>Loading...</p>
           </div>
@@ -601,7 +677,7 @@ const App = () => {
         )}
 
         {/* Tab Content */}
-        {!loading && (
+        {(!loading || isAutoProcessing) && (
           <>
             {/* Media Files Tab */}
             {activeTab === 'files' && (
@@ -632,10 +708,48 @@ const App = () => {
                       
                       {isAutoProcessing && (
                         <div className="processing-status">
-                          Processing file {currentProcessingIndex + 1} of {files.filter(f => !f.movie).length}...
+                          <div className="parallel-status">
+                            <span>🔄 Processing {processingFiles.size} files in parallel</span>
+                            <span className="progress-counter">
+                              {completedFiles.size} / {files.filter(f => !f.movie).length} completed
+                            </span>
+                            <div className="progress-bar">
+                              <div 
+                                className="progress-fill" 
+                                style={{
+                                  width: `${(completedFiles.size / Math.max(files.filter(f => !f.movie).length, 1)) * 100}%`
+                                }}
+                              ></div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
+                    
+                    {/* Auto-process Results */}
+                    {autoProcessResults.length > 0 && (
+                      <div className="auto-process-results">
+                        <h3>Auto-Processing Results</h3>
+                        <div className="results-summary">
+                          {autoProcessResults.map((result, index) => (
+                            <div key={index} className={`result-item ${result.status}`}>
+                              <span className="result-file">{result.file}</span>
+                              <span className="result-status">
+                                {result.status === 'success' && `✓ Assigned: ${result.movie}`}
+                                {result.status === 'no_match' && '⚠ No match found'}
+                                {result.status === 'error' && `✗ Error: ${result.error}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <button 
+                          className="clear-results-btn"
+                          onClick={() => setAutoProcessResults([])}
+                        >
+                          Clear Results
+                        </button>
+                      </div>
+                    )}
                     
                     <FilesTable 
                     files={files} 
@@ -658,6 +772,9 @@ const App = () => {
                     onClearSearchResults={handleClearSearchResults}
                     isAutoProcessing={isAutoProcessing}
                     currentProcessingIndex={currentProcessingIndex}
+                    fetchingFiles={fetchingFiles}
+                    processingFiles={processingFiles}
+                    completedFiles={completedFiles}
                   />
                   </>
                 )}
@@ -742,7 +859,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -761,6 +878,11 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
 
   return (
     <div className="files-table-container">
+      {fetchingFiles && (
+        <div className="fetching-files-indicator">
+          <span>🔄 Refreshing files list...</span>
+        </div>
+      )}
       <table className="files-table">
         <thead>
           <tr>
@@ -773,14 +895,13 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
         </thead>
         <tbody>
           {files.map((file, index) => {
-            const unprocessedFiles = files.filter(f => !f.movie);
-            const isCurrentlyProcessing = isAutoProcessing && 
-              unprocessedFiles[currentProcessingIndex] === file;
+            const isCurrentlyProcessing = isAutoProcessing && processingFiles.has(file.path);
+            const isCompleted = completedFiles.has(file.path);
             
             return (
             <React.Fragment key={index}>
               <tr 
-                className={`file-row ${selectedFile === file ? 'selected' : ''} ${deletingFileId === file.path ? 'deleting' : ''} ${isCurrentlyProcessing ? 'processing' : ''}`}
+                className={`file-row ${selectedFile === file ? 'selected' : ''} ${deletingFileId === file.path ? 'deleting' : ''} ${isCurrentlyProcessing ? 'processing' : ''} ${isCompleted ? 'completed' : ''}`}
                 onClick={() => handleRowClick(file)}
               >
                 <td className="file-name-cell">{file.name}</td>
