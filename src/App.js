@@ -28,6 +28,7 @@ const App = () => {
   const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
   const [currentConcurrencyLimit, setCurrentConcurrencyLimit] = useState(8); // Track current concurrency limit
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false); // Filter to show only unassigned movies
+  const [alternateMovieName, setAlternateMovieName] = useState(''); // State for alternate movie name input
   const processingRef = useRef(false);
 
   // Helper function to update selected file reference when files array changes
@@ -237,9 +238,15 @@ const App = () => {
     setMovieSearchResults([]);
     setSearchedFile(file);
     try {
-      // Extract movie name from filename for search
-      const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
-      const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+      // Use alternate movie name if provided, otherwise extract from filename
+      let searchTerm;
+      if (alternateMovieName.trim()) {
+        searchTerm = alternateMovieName.trim();
+      } else {
+        // Extract movie name from filename for search
+        const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
+        searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+      }
       
       const data = await api.movies.search(searchTerm);
       // Extract results from the nested TMDB response
@@ -286,6 +293,7 @@ const App = () => {
         setMovieSearchResults([]);
         setSearchedFile(null);
         setSuccessMessage('');
+        setAlternateMovieName(''); // Clear alternate movie name when movie is accepted
       }, 2000);
       
       console.log(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
@@ -446,6 +454,7 @@ const App = () => {
   const handleClearSearchResults = () => {
     setMovieSearchResults([]);
     setSearchedFile(null);
+    setAlternateMovieName(''); // Clear alternate movie name when clearing search results
   };
 
 
@@ -819,6 +828,8 @@ const App = () => {
                     processingFiles={processingFiles}
                     completedFiles={completedFiles}
                     showUnassignedOnly={showUnassignedOnly}
+                    alternateMovieName={alternateMovieName}
+                    setAlternateMovieName={setAlternateMovieName}
                   />
                   </>
                 )}
@@ -903,7 +914,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly, alternateMovieName, setAlternateMovieName }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -973,13 +984,23 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                     <div className="action-buttons">
 
                       <div className="button-row">
-                        <button 
-                          className="find-movie-btn"
-                          onClick={() => onFindMovie(file)}
-                          disabled={isSearchingMovie}
-                        >
-                          {isSearchingMovie ? 'Searching...' : 'Find Movie'}
-                        </button>
+                        <div className="find-movie-section">
+                          <input
+                            type="text"
+                            placeholder="Enter alternate movie name (optional)..."
+                            value={alternateMovieName}
+                            onChange={(e) => setAlternateMovieName(e.target.value)}
+                            className="alternate-movie-input"
+                            disabled={isSearchingMovie}
+                          />
+                          <button 
+                            className="find-movie-btn"
+                            onClick={() => onFindMovie(file)}
+                            disabled={isSearchingMovie}
+                          >
+                            {isSearchingMovie ? 'Searching...' : 'Find Movie'}
+                          </button>
+                        </div>
                         
                         {file.movie && (
                           <button 
