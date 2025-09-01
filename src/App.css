@@ -447,6 +447,59 @@
   text-align: center;
 }
 
+.db-sync-warning {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  color: #856404;
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.warning-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.fix-assignments-btn {
+  padding: 8px 16px;
+  background-color: #fd7e14;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.fix-assignments-btn:hover {
+  background-color: #e8690b;
+}
+
+.refresh-files-btn {
+  padding: 8px 16px;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.refresh-files-btn:hover {
+  background-color: #138496;
+}
+
 .auto-process-btn {
   padding: 12px 24px;
   border: none;

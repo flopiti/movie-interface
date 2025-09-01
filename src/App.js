@@ -448,6 +448,8 @@ const App = () => {
     setSearchedFile(null);
   };
 
+
+
   const handleAutoProcess = async () => {
     if (processingRef.current) {
       // Stop processing
@@ -517,7 +519,7 @@ const App = () => {
           // If filename needs renaming, do it
           if (assignResponse.filenameInfo?.needs_rename) {
             const renameResponse = await api.movies.renameFile(currentFilePath, assignResponse.filenameInfo.standard_filename);
-            // Update the file path and name after renaming
+            // Update the file path and name after renaming, but preserve the movie assignment
             setFiles(prevFiles => 
               prevFiles.map(f => 
                 f.path === currentFilePath 
@@ -525,12 +527,15 @@ const App = () => {
                       ...f, 
                       path: renameResponse.new_path,
                       name: assignResponse.filenameInfo.standard_filename,
-                      filenameInfo: undefined // Clear since it's now standard
+                      filenameInfo: undefined, // Clear since it's now standard
+                      movie: bestMatch // Preserve the movie assignment
                     }
                   : f
               )
             );
             currentFilePath = renameResponse.new_path; // Update our reference
+            
+
           }
           
           // If folder needs renaming, do it
@@ -539,7 +544,7 @@ const App = () => {
               assignResponse.folderInfo.current_folder_path, 
               assignResponse.folderInfo.standard_foldername
             );
-            // Update all files that were in the renamed folder
+            // Update all files that were in the renamed folder, but preserve movie assignments
             setFiles(prevFiles => 
               prevFiles.map(f => {
                 if (f.directory === assignResponse.folderInfo.current_folder_path || 
@@ -551,7 +556,8 @@ const App = () => {
                     ...f,
                     path: newPath,
                     directory: newDirectory,
-                    folderInfo: f.folderInfo ? undefined : f.folderInfo // Clear folder info since it's now standard
+                    folderInfo: f.folderInfo ? undefined : f.folderInfo, // Clear folder info since it's now standard
+                    movie: f.movie // Preserve the movie assignment
                   };
                 }
                 return f;
@@ -634,19 +640,6 @@ const App = () => {
     // Refresh files from backend to ensure state is synchronized
     try {
       await fetchFiles(true); // Use duringAutoProcess=true to avoid showing loading state
-      
-      // Log summary of what was actually processed
-      const finalUnprocessedCount = files.filter(f => !f.movie).length;
-      const processedCount = autoProcessResults.filter(r => r.status === 'success').length;
-      const noMatchCount = autoProcessResults.filter(r => r.status === 'no_match').length;
-      const errorCount = autoProcessResults.filter(r => r.status === 'error').length;
-      
-      console.log(`Auto-processing completed! Summary:`);
-      console.log(`- Successfully processed: ${processedCount} files`);
-      console.log(`- No match found: ${noMatchCount} files`);
-      console.log(`- Errors: ${errorCount} files`);
-      console.log(`- Remaining unprocessed: ${finalUnprocessedCount} files`);
-      console.log(`- Files refreshed from backend`);
       
     } catch (err) {
       console.error('Failed to refresh files after auto-processing:', err);
@@ -773,6 +766,8 @@ const App = () => {
                         <span>🔍 Filtering: Showing {files.filter(f => !f.movie).length} of {files.length} files (unassigned only)</span>
                       </div>
                     )}
+                    
+
                     
                     {/* Auto-process Results */}
                     {autoProcessResults.length > 0 && (
