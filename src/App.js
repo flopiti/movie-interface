@@ -245,7 +245,16 @@ const App = () => {
       } else {
         // Extract movie name from filename for search
         const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
-        searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+        
+        // Extract year from filename (look for 4-digit year)
+        const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+        const year = yearMatch ? yearMatch[0] : null;
+        
+        // Clean the filename and remove the year for the base search term
+        const baseSearchTerm = fileName.replace(/[._-]/g, ' ').replace(/\b(19|20)\d{2}\b/g, '').trim();
+        
+        // Include year in search term if found
+        searchTerm = year ? `${baseSearchTerm} ${year}` : baseSearchTerm;
       }
       
       const data = await api.movies.search(searchTerm);
@@ -495,7 +504,16 @@ const App = () => {
       try {
         // Search for movie using the filename
         const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
-        const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+        
+        // Extract year from filename (look for 4-digit year)
+        const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+        const year = yearMatch ? yearMatch[0] : null;
+        
+        // Clean the filename and remove the year for the base search term
+        const baseSearchTerm = fileName.replace(/[._-]/g, ' ').replace(/\b(19|20)\d{2}\b/g, '').trim();
+        
+        // Include year in search term if found
+        const searchTerm = year ? `${baseSearchTerm} ${year}` : baseSearchTerm;
         
         // Use the search API which now includes OpenAI cleaning
         const searchData = await api.movies.search(searchTerm);
@@ -985,14 +1003,17 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
 
                       <div className="button-row">
                         <div className="find-movie-section">
-                          <input
-                            type="text"
-                            placeholder="Enter alternate movie name (optional)..."
-                            value={alternateMovieName}
-                            onChange={(e) => setAlternateMovieName(e.target.value)}
-                            className="alternate-movie-input"
-                            disabled={isSearchingMovie}
-                          />
+                          <div className="input-group">
+                            <input
+                              type="text"
+                              placeholder="Enter movie name (e.g., 'Signs of Life 1968')..."
+                              value={alternateMovieName}
+                              onChange={(e) => setAlternateMovieName(e.target.value)}
+                              className="alternate-movie-input"
+                              disabled={isSearchingMovie}
+                            />
+                            <small className="input-hint">Include year for better results</small>
+                          </div>
                           <button 
                             className="find-movie-btn"
                             onClick={() => onFindMovie(file)}
