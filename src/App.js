@@ -15,6 +15,8 @@ const App = () => {
   const [movieSearchResults, setMovieSearchResults] = useState([]);
   const [isSearchingMovie, setIsSearchingMovie] = useState(false);
   const [searchedFile, setSearchedFile] = useState(null);
+  const [acceptingMovieId, setAcceptingMovieId] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch data on component mount
   useEffect(() => {
@@ -214,8 +216,9 @@ const App = () => {
   const handleAcceptMovie = async (movie) => {
     if (!selectedFile) return;
     
-    setLoading(true);
+    setAcceptingMovieId(movie.id);
     setError(null);
+    setSuccessMessage('');
     
     try {
       // Send the assignment to the backend
@@ -235,17 +238,22 @@ const App = () => {
         )
       );
       
-      // Clear selection and search results after assignment
-      setSelectedFile(null);
-      setMovieSearchResults([]);
-      setSearchedFile(null);
+      // Show success message
+      setSuccessMessage(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
+      
+      // Clear search results after a short delay to show success
+      setTimeout(() => {
+        setMovieSearchResults([]);
+        setSearchedFile(null);
+        setSuccessMessage('');
+      }, 2000);
       
       console.log(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
     } catch (err) {
       setError('Failed to assign movie: ' + err.message);
       console.error('Error assigning movie:', err);
     } finally {
-      setLoading(false);
+      setAcceptingMovieId(null);
     }
   };
 
@@ -457,6 +465,8 @@ const App = () => {
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                     searchedFile={searchedFile}
+                    acceptingMovieId={acceptingMovieId}
+                    successMessage={successMessage}
                     onClearSearchResults={handleClearSearchResults}
                   />
                 )}
@@ -541,7 +551,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, onClearSearchResults }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, onClearSearchResults }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -688,26 +698,37 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                       {movieSearchResults.length > 0 && searchedFile === file && (
                         <div className="movie-suggestions">
                           <h4>Movie Suggestions:</h4>
+                          {successMessage && (
+                            <div className="success-message">
+                              ✓ {successMessage}
+                            </div>
+                          )}
                           <div className="suggestions-list">
-                            {movieSearchResults.slice(0, 3).map((movie, idx) => (
-                              <div key={movie.id || idx} className="movie-suggestion">
-                                <div className="movie-suggestion-info">
-                                  <strong>{movie.title}</strong>
-                                  {movie.release_date && (
-                                    <span className="movie-year"> ({new Date(movie.release_date).getFullYear()})</span>
-                                  )}
-                                  {movie.vote_average && (
-                                    <span className="movie-rating"> - Rating: {movie.vote_average}/10</span>
-                                  )}
+                            {movieSearchResults.slice(0, 3).map((movie, idx) => {
+                              const isAccepting = acceptingMovieId === movie.id;
+                              const isDisabled = acceptingMovieId !== null;
+                              
+                              return (
+                                <div key={movie.id || idx} className={`movie-suggestion ${isAccepting ? 'accepting' : ''}`}>
+                                  <div className="movie-suggestion-info">
+                                    <strong>{movie.title}</strong>
+                                    {movie.release_date && (
+                                      <span className="movie-year"> ({new Date(movie.release_date).getFullYear()})</span>
+                                    )}
+                                    {movie.vote_average && (
+                                      <span className="movie-rating"> - Rating: {movie.vote_average}/10</span>
+                                    )}
+                                  </div>
+                                  <button 
+                                    className="accept-movie-btn"
+                                    onClick={() => onAcceptMovie(movie)}
+                                    disabled={isDisabled}
+                                  >
+                                    {isAccepting ? 'Accepting...' : 'Accept'}
+                                  </button>
                                 </div>
-                                <button 
-                                  className="accept-movie-btn"
-                                  onClick={() => onAcceptMovie(movie)}
-                                >
-                                  Accept
-                                </button>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
