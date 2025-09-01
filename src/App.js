@@ -19,6 +19,8 @@ const App = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [renamingFileId, setRenamingFileId] = useState(null);
   const [renamingFolderId, setRenamingFolderId] = useState(null);
+  const [deletingFileId, setDeletingFileId] = useState(null);
+  const [confirmDeleteFileId, setConfirmDeleteFileId] = useState(null);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -375,25 +377,37 @@ const App = () => {
   };
 
   const handleDeleteFile = async (file) => {
-    // Show confirmation dialog
-    if (!window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
-      return;
-    }
-    
-    setLoading(true);
+    const fileId = file.path; // Use file path as unique identifier
+    setDeletingFileId(fileId);
     setError(null);
+    setSuccessMessage('');
     
     try {
       // Send the delete request to the backend
       const response = await api.movies.deleteFile(file.path);
       
-      // Remove the file from the files list
-      setFiles(prevFiles => prevFiles.filter(f => f.path !== file.path));
-      
-      // Clear selection if this file was selected
-      if (selectedFile === file) {
-        setSelectedFile(null);
+      // Show success message before removing from UI
+      const successMsg = `Successfully deleted "${response.file_name}" (${Math.round(response.file_size / 1024)} KB)`;
+      if (response.had_movie_assignment) {
+        setSuccessMessage(successMsg + ' - Movie assignment was also removed');
+      } else {
+        setSuccessMessage(successMsg);
       }
+      
+      // Remove the file from the files list after a short delay
+      setTimeout(() => {
+        setFiles(prevFiles => prevFiles.filter(f => f.path !== file.path));
+        
+        // Clear selection if this file was selected
+        if (selectedFile === file) {
+          setSelectedFile(null);
+        }
+        
+        // Clear success message after file is removed
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 2000);
+      }, 1000);
       
       console.log(`Successfully deleted file: "${response.file_name}" (${response.file_size} bytes)`);
       if (response.had_movie_assignment) {
@@ -403,8 +417,17 @@ const App = () => {
       setError('Failed to delete file: ' + err.message);
       console.error('Error deleting file:', err);
     } finally {
-      setLoading(false);
+      setDeletingFileId(null);
+      setConfirmDeleteFileId(null);
     }
+  };
+
+  const handleConfirmDelete = (file) => {
+    setConfirmDeleteFileId(file.path);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDeleteFileId(null);
   };
 
   const handleClearSearchResults = () => {
@@ -484,6 +507,8 @@ const App = () => {
                     onRenameFile={handleRenameFile}
                     onRenameFolder={handleRenameFolder}
                     onDeleteFile={handleDeleteFile}
+                    onConfirmDelete={handleConfirmDelete}
+                    onCancelDelete={handleCancelDelete}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                     searchedFile={searchedFile}
@@ -491,6 +516,8 @@ const App = () => {
                     successMessage={successMessage}
                     renamingFileId={renamingFileId}
                     renamingFolderId={renamingFolderId}
+                    deletingFileId={deletingFileId}
+                    confirmDeleteFileId={confirmDeleteFileId}
                     onClearSearchResults={handleClearSearchResults}
                   />
                 )}
@@ -575,7 +602,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, onClearSearchResults }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, onConfirmDelete, onCancelDelete, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, confirmDeleteFileId, onClearSearchResults }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -632,6 +659,11 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                 <tr className="action-row">
                   <td colSpan="5">
                     <div className="action-buttons">
+                      {successMessage && successMessage.includes('deleted') && (
+                        <div className="success-message delete-success">
+                          ✓ {successMessage}
+                        </div>
+                      )}
                       <div className="button-row">
                         <button 
                           className="find-movie-btn"
@@ -650,13 +682,35 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                           </button>
                         )}
                         
-                        <button 
-                          className="delete-file-btn"
-                          onClick={() => onDeleteFile(file)}
-                          style={{ backgroundColor: '#dc3545', color: 'white' }}
-                        >
-                          Delete File
-                        </button>
+                        {confirmDeleteFileId === file.path ? (
+                          <div className="delete-confirmation">
+                            <span className="delete-warning">⚠️ Delete "{file.name}"?</span>
+                            <div className="delete-actions">
+                              <button 
+                                className="confirm-delete-btn"
+                                onClick={() => onDeleteFile(file)}
+                                disabled={deletingFileId !== null}
+                              >
+                                {deletingFileId === file.path ? 'Deleting...' : 'Yes, Delete'}
+                              </button>
+                              <button 
+                                className="cancel-delete-btn"
+                                onClick={onCancelDelete}
+                                disabled={deletingFileId !== null}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button 
+                            className="delete-file-btn"
+                            onClick={() => onConfirmDelete(file)}
+                            disabled={deletingFileId !== null || renamingFileId !== null || renamingFolderId !== null}
+                          >
+                            Delete File
+                          </button>
+                        )}
                       </div>
 
                       {/* Filename Information Display */}
