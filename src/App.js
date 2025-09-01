@@ -28,6 +28,7 @@ const App = () => {
   const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
   const [currentConcurrencyLimit, setCurrentConcurrencyLimit] = useState(8); // Track current concurrency limit
   const processingRef = useRef(false);
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
 
   // Helper function to update selected file reference when files array changes
   useEffect(() => {
@@ -711,12 +712,23 @@ const App = () => {
             {/* Media Files Tab */}
             {activeTab === 'files' && (
               <section className="files-section">
-                <h2>Media Files ({files.length})</h2>
+                <h2>Media Files ({showUnassignedOnly ? files.filter(f => !f.movie).length : files.length})</h2>
                 {files.length === 0 ? (
                   <p className="no-files">No media files found. Add movie paths first.</p>
                 ) : (
                   <>
                     <div className="files-controls">
+                      <div className="filter-controls">
+                        <label className="filter-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={showUnassignedOnly}
+                            onChange={(e) => setShowUnassignedOnly(e.target.checked)}
+                          />
+                          <span>Show only UNASSIGNED movies</span>
+                        </label>
+                      </div>
+                      
                       <button 
                         className={`auto-process-btn ${isAutoProcessing ? 'stop' : 'play'}`}
                         onClick={handleAutoProcess}
@@ -754,6 +766,13 @@ const App = () => {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Filter Message */}
+                    {showUnassignedOnly && (
+                      <div className="filter-active-message">
+                        <span>🔍 Filtering: Showing {files.filter(f => !f.movie).length} of {files.length} files (unassigned only)</span>
+                      </div>
+                    )}
                     
                     {/* Auto-process Results */}
                     {autoProcessResults.length > 0 && (
