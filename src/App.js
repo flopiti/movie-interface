@@ -392,6 +392,9 @@ const App = () => {
         if (selectedFile === file) {
           setSelectedFile(null);
         }
+        
+        // Clear the deleting state to re-enable other delete buttons
+        setDeletingFileId(null);
       }, 400); // Match the CSS animation duration
       
     } catch (err) {
