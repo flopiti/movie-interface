@@ -27,8 +27,8 @@ const App = () => {
   const [processingFiles, setProcessingFiles] = useState(new Set()); // Track which files are currently being processed
   const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
   const [currentConcurrencyLimit, setCurrentConcurrencyLimit] = useState(8); // Track current concurrency limit
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false); // Filter to show only unassigned movies
   const processingRef = useRef(false);
-  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
 
   // Helper function to update selected file reference when files array changes
   useEffect(() => {
@@ -823,6 +823,7 @@ const App = () => {
                     fetchingFiles={fetchingFiles}
                     processingFiles={processingFiles}
                     completedFiles={completedFiles}
+                    showUnassignedOnly={showUnassignedOnly}
                   />
                   </>
                 )}
@@ -907,7 +908,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -923,6 +924,8 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
   const handleRowClick = (file) => {
     setSelectedFile(selectedFile === file ? null : file);
   };
+
+  const filteredFiles = showUnassignedOnly ? files.filter(file => !file.movie) : files;
 
   return (
     <div className="files-table-container">
@@ -942,7 +945,7 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
           </tr>
         </thead>
         <tbody>
-          {files.map((file, index) => {
+          {filteredFiles.map((file, index) => {
             const isCurrentlyProcessing = isAutoProcessing && processingFiles.has(file.path);
             const isCompleted = completedFiles.has(file.path);
             
