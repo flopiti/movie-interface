@@ -541,6 +541,77 @@
   transform: translateY(-1px);
 }
 
+/* Filename Information */
+.filename-info {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e8f4fd;
+  border-radius: 8px;
+  border: 1px solid #bee5eb;
+}
+
+.filename-info h4 {
+  margin: 0 0 15px 0;
+  color: #0c5460;
+  font-size: 1rem;
+}
+
+.filename-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.current-filename, .standard-filename {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-filename strong, .standard-filename strong {
+  min-width: 80px;
+  color: #495057;
+}
+
+.filename {
+  font-family: 'Courier New', monospace;
+  background-color: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-size: 0.9rem;
+}
+
+.rename-action {
+  margin-top: 10px;
+}
+
+.rename-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.rename-btn:hover {
+  background: #138496;
+}
+
+.filename-status {
+  margin-top: 10px;
+}
+
+.status-good {
+  color: #28a745;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
 .movie-suggestions {
   margin-top: 15px;
 }

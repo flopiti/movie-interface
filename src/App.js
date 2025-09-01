@@ -135,13 +135,17 @@ const App = () => {
     
     try {
       // Send the assignment to the backend
-      await api.movies.assign(selectedFile.path, movie);
+      const response = await api.movies.assign(selectedFile.path, movie);
       
-      // Update the file with the selected movie information
+      // Update the file with the selected movie information and filename info
       setFiles(prevFiles => 
         prevFiles.map(file => 
           file === selectedFile 
-            ? { ...file, movie: movie }
+            ? { 
+                ...file, 
+                movie: movie,
+                filenameInfo: response.filenameInfo
+              }
             : file
         )
       );
@@ -171,7 +175,7 @@ const App = () => {
       setFiles(prevFiles => 
         prevFiles.map(f => 
           f === file 
-            ? { ...f, movie: undefined }
+            ? { ...f, movie: undefined, filenameInfo: undefined }
             : f
         )
       );
@@ -180,6 +184,37 @@ const App = () => {
     } catch (err) {
       setError('Failed to remove movie assignment: ' + err.message);
       console.error('Error removing movie assignment:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameFile = async (file, newFilename) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Send the rename request to the backend
+      const response = await api.movies.renameFile(file.path, newFilename);
+      
+      // Update the file list with the new path and name
+      setFiles(prevFiles => 
+        prevFiles.map(f => 
+          f === file 
+            ? { 
+                ...f, 
+                path: response.new_path,
+                name: newFilename,
+                filenameInfo: undefined // Clear filename info since it's now standard
+              }
+            : f
+        )
+      );
+      
+      console.log(`Successfully renamed file to "${newFilename}"`);
+    } catch (err) {
+      setError('Failed to rename file: ' + err.message);
+      console.error('Error renaming file:', err);
     } finally {
       setLoading(false);
     }
@@ -254,6 +289,7 @@ const App = () => {
                     onFindMovie={handleFindMovie}
                     onAcceptMovie={handleAcceptMovie}
                     onRemoveMovieAssignment={handleRemoveMovieAssignment}
+                    onRenameFile={handleRenameFile}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                   />
@@ -339,7 +375,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, movieSearchResults, isSearchingMovie }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, movieSearchResults, isSearchingMovie }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -414,6 +450,36 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                           </button>
                         )}
                       </div>
+
+                      {/* Filename Information Display */}
+                      {file.movie && file.filenameInfo && (
+                        <div className="filename-info">
+                          <h4>Filename Information:</h4>
+                          <div className="filename-comparison">
+                            <div className="current-filename">
+                              <strong>Current:</strong> <span className="filename">{file.filenameInfo.current_filename}</span>
+                            </div>
+                            <div className="standard-filename">
+                              <strong>Standard:</strong> <span className="filename">{file.filenameInfo.standard_filename}</span>
+                            </div>
+                            {file.filenameInfo.needs_rename && (
+                              <div className="rename-action">
+                                <button 
+                                  className="rename-btn"
+                                  onClick={() => onRenameFile(file, file.filenameInfo.standard_filename)}
+                                >
+                                  Rename to Standard Format
+                                </button>
+                              </div>
+                            )}
+                            {!file.filenameInfo.needs_rename && (
+                              <div className="filename-status">
+                                <span className="status-good">✓ Filename is already in standard format</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       
                       {movieSearchResults.length > 0 && (
                         <div className="movie-suggestions">

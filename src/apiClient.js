@@ -111,12 +111,20 @@ export const api = {
     removeAssignment: (filePath) => api.delete('/remove-movie-assignment', { 
       file_path: filePath 
     }),
+    
+    // Rename a file to standard format
+    renameFile: (currentPath, newFilename) => api.post('/rename-file', {
+      file_path: currentPath,
+      new_filename: newFilename
+    }),
   },
 
   // Health check
   health: {
     check: () => api.get('/health'),
   },
+
+
 };
 
 export default api;
