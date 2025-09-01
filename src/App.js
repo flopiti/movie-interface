@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from './apiClient';
 import './App.css';
 
@@ -20,6 +20,10 @@ const App = () => {
   const [renamingFileId, setRenamingFileId] = useState(null);
   const [renamingFolderId, setRenamingFolderId] = useState(null);
   const [deletingFileId, setDeletingFileId] = useState(null);
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState(-1);
+  const [autoProcessResults, setAutoProcessResults] = useState([]);
+  const processingRef = useRef(false);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -411,6 +415,139 @@ const App = () => {
     setSearchedFile(null);
   };
 
+  const handleAutoProcess = async () => {
+    if (processingRef.current) {
+      // Stop processing
+      processingRef.current = false;
+      setIsAutoProcessing(false);
+      setCurrentProcessingIndex(-1);
+      return;
+    }
+
+    // Start processing
+    processingRef.current = true;
+    setIsAutoProcessing(true);
+    setCurrentProcessingIndex(0);
+    setAutoProcessResults([]);
+    setError(null);
+
+    const unprocessedFiles = files.filter(file => !file.movie);
+    
+    for (let i = 0; i < unprocessedFiles.length; i++) {
+      // Check if processing was stopped
+      if (!processingRef.current) {
+        break;
+      }
+
+      const file = unprocessedFiles[i];
+      setCurrentProcessingIndex(i);
+
+      try {
+        // Search for movie
+        const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
+        const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
+        
+        const searchData = await api.movies.search(searchTerm);
+        const results = searchData.tmdb_results?.results || [];
+        
+        if (results.length > 0) {
+          const bestMatch = results[0]; // Use the first (best) result
+          
+          // Assign the movie
+          const assignResponse = await api.movies.assign(file.path, bestMatch);
+          
+          // Update the file with movie info
+          const updatedFile = {
+            ...file,
+            movie: bestMatch,
+            filenameInfo: assignResponse.filenameInfo,
+            folderInfo: assignResponse.folderInfo
+          };
+          
+          setFiles(prevFiles => 
+            prevFiles.map(f => f.path === file.path ? updatedFile : f)
+          );
+          
+          // If filename needs renaming, do it
+          if (assignResponse.filenameInfo?.needs_rename) {
+            await api.movies.renameFile(file.path, assignResponse.filenameInfo.standard_filename);
+            
+            // Update file path and clear filename info
+            const renamedFile = {
+              ...updatedFile,
+              path: assignResponse.filenameInfo.standard_filename,
+              name: assignResponse.filenameInfo.standard_filename.split('/').pop(),
+              filenameInfo: undefined
+            };
+            
+            setFiles(prevFiles => 
+              prevFiles.map(f => f.path === file.path ? renamedFile : f)
+            );
+          }
+          
+          // If folder needs renaming, do it
+          if (assignResponse.folderInfo?.needs_rename) {
+            const renameResponse = await api.movies.renameFolder(
+              assignResponse.folderInfo.current_folder_path, 
+              assignResponse.folderInfo.standard_foldername
+            );
+            
+            // Update all files in the renamed folder
+            setFiles(prevFiles => 
+              prevFiles.map(f => {
+                if (f.directory === assignResponse.folderInfo.current_folder_path || 
+                    f.path.startsWith(assignResponse.folderInfo.current_folder_path + '/')) {
+                  const newPath = f.path.replace(assignResponse.folderInfo.current_folder_path, renameResponse.new_path);
+                  const newDirectory = f.directory.replace(assignResponse.folderInfo.current_folder_path, renameResponse.new_path);
+                  
+                  return {
+                    ...f,
+                    path: newPath,
+                    directory: newDirectory,
+                    folderInfo: undefined
+                  };
+                }
+                return f;
+              })
+            );
+          }
+          
+          setAutoProcessResults(prev => [...prev, {
+            file: file.name,
+            movie: bestMatch.title,
+            status: 'success'
+          }]);
+        } else {
+          setAutoProcessResults(prev => [...prev, {
+            file: file.name,
+            movie: null,
+            status: 'no_match'
+          }]);
+        }
+        
+        // Small delay between files to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (err) {
+        console.error(`Error processing file ${file.name}:`, err);
+        setAutoProcessResults(prev => [...prev, {
+          file: file.name,
+          movie: null,
+          status: 'error',
+          error: err.message
+        }]);
+        
+        // Continue with next file even if one fails
+        continue;
+      }
+    }
+    
+    // Processing complete
+    processingRef.current = false;
+    setIsAutoProcessing(false);
+    setCurrentProcessingIndex(-1);
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -473,7 +610,34 @@ const App = () => {
                 {files.length === 0 ? (
                   <p className="no-files">No media files found. Add movie paths first.</p>
                 ) : (
-                  <FilesTable 
+                  <>
+                    <div className="files-controls">
+                      <button 
+                        className={`auto-process-btn ${isAutoProcessing ? 'stop' : 'play'}`}
+                        onClick={handleAutoProcess}
+                        disabled={files.filter(f => !f.movie).length === 0}
+                      >
+                        {isAutoProcessing ? (
+                          <>
+                            <span className="stop-icon">⏹</span>
+                            Stop Auto-Processing
+                          </>
+                        ) : (
+                          <>
+                            <span className="play-icon">▶</span>
+                            Auto-Process Files ({files.filter(f => !f.movie).length} remaining)
+                          </>
+                        )}
+                      </button>
+                      
+                      {isAutoProcessing && (
+                        <div className="processing-status">
+                          Processing file {currentProcessingIndex + 1} of {files.filter(f => !f.movie).length}...
+                        </div>
+                      )}
+                    </div>
+                    
+                    <FilesTable 
                     files={files} 
                     selectedFile={selectedFile}
                     setSelectedFile={setSelectedFile}
@@ -492,7 +656,10 @@ const App = () => {
                     renamingFolderId={renamingFolderId}
                     deletingFileId={deletingFileId}
                     onClearSearchResults={handleClearSearchResults}
+                    isAutoProcessing={isAutoProcessing}
+                    currentProcessingIndex={currentProcessingIndex}
                   />
+                  </>
                 )}
               </section>
             )}
@@ -575,7 +742,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -605,10 +772,15 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
           </tr>
         </thead>
         <tbody>
-          {files.map((file, index) => (
+          {files.map((file, index) => {
+            const unprocessedFiles = files.filter(f => !f.movie);
+            const isCurrentlyProcessing = isAutoProcessing && 
+              unprocessedFiles[currentProcessingIndex] === file;
+            
+            return (
             <React.Fragment key={index}>
               <tr 
-                className={`file-row ${selectedFile === file ? 'selected' : ''} ${deletingFileId === file.path ? 'deleting' : ''}`}
+                className={`file-row ${selectedFile === file ? 'selected' : ''} ${deletingFileId === file.path ? 'deleting' : ''} ${isCurrentlyProcessing ? 'processing' : ''}`}
                 onClick={() => handleRowClick(file)}
               >
                 <td className="file-name-cell">{file.name}</td>
@@ -774,7 +946,8 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                 </tr>
               )}
             </React.Fragment>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
