@@ -978,16 +978,23 @@ const App = () => {
                     <p>All movies have only one file assigned.</p>
                   </div>
                 ) : (
-                  <div className="duplicates-list">
-                    {Object.entries(duplicates).map(([movieId, movieData]) => (
-                      <DuplicateMovieCard 
-                        key={movieId} 
-                        movieData={movieData} 
-                        onDeleteFile={handleDeleteFile}
-                        deletingFileId={deletingFileId}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="duplicates-summary">
+                      <p>
+                        Found {Object.keys(duplicates).length} movies with duplicate files.
+                      </p>
+                    </div>
+                    <div className="duplicates-list">
+                      {Object.entries(duplicates).map(([movieId, movieData]) => (
+                        <DuplicateMovieCard 
+                          key={movieId} 
+                          movieData={movieData} 
+                          onDeleteFile={handleDeleteFile}
+                          deletingFileId={deletingFileId}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </section>
             )}
