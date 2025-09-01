@@ -100,6 +100,17 @@ export const api = {
   movies: {
     // Search movies using TMDB API
     search: (query) => api.get('/search-movie', { q: query }),
+    
+    // Assign a movie to a file
+    assign: (filePath, movieData) => api.post('/assign-movie', { 
+      file_path: filePath, 
+      movie: movieData 
+    }),
+    
+    // Remove movie assignment from a file
+    removeAssignment: (filePath) => api.delete('/remove-movie-assignment', { 
+      file_path: filePath 
+    }),
   },
 
   // Health check

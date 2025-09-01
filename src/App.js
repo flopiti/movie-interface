@@ -55,7 +55,9 @@ const App = () => {
     setError(null);
     try {
       const data = await api.movies.search(searchQuery);
-      setSearchResults(data.results || []);
+      // Extract results from the nested TMDB response
+      const results = data.tmdb_results?.results || [];
+      setSearchResults(results);
     } catch (err) {
       setError('Search failed: ' + err.message);
       console.error('Error searching movies:', err);
@@ -114,7 +116,9 @@ const App = () => {
       const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
       
       const data = await api.movies.search(searchTerm);
-      setMovieSearchResults(data.results || []);
+      // Extract results from the nested TMDB response
+      const results = data.tmdb_results?.results || [];
+      setMovieSearchResults(results);
     } catch (err) {
       setError('Movie search failed: ' + err.message);
       console.error('Error searching movies:', err);
@@ -123,21 +127,62 @@ const App = () => {
     }
   };
 
-  const handleAcceptMovie = (movie) => {
+  const handleAcceptMovie = async (movie) => {
     if (!selectedFile) return;
     
-    // Update the file with the selected movie information
-    setFiles(prevFiles => 
-      prevFiles.map(file => 
-        file === selectedFile 
-          ? { ...file, movie: movie }
-          : file
-      )
-    );
+    setLoading(true);
+    setError(null);
     
-    // Clear selection and search results
-    setSelectedFile(null);
-    setMovieSearchResults([]);
+    try {
+      // Send the assignment to the backend
+      await api.movies.assign(selectedFile.path, movie);
+      
+      // Update the file with the selected movie information
+      setFiles(prevFiles => 
+        prevFiles.map(file => 
+          file === selectedFile 
+            ? { ...file, movie: movie }
+            : file
+        )
+      );
+      
+      // Clear selection and search results
+      setSelectedFile(null);
+      setMovieSearchResults([]);
+      
+      console.log(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
+    } catch (err) {
+      setError('Failed to assign movie: ' + err.message);
+      console.error('Error assigning movie:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveMovieAssignment = async (file) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Send the removal request to the backend
+      await api.movies.removeAssignment(file.path);
+      
+      // Update the file to remove the movie assignment
+      setFiles(prevFiles => 
+        prevFiles.map(f => 
+          f === file 
+            ? { ...f, movie: undefined }
+            : f
+        )
+      );
+      
+      console.log(`Successfully removed movie assignment from "${file.name}"`);
+    } catch (err) {
+      setError('Failed to remove movie assignment: ' + err.message);
+      console.error('Error removing movie assignment:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -208,6 +253,7 @@ const App = () => {
                     setSelectedFile={setSelectedFile}
                     onFindMovie={handleFindMovie}
                     onAcceptMovie={handleAcceptMovie}
+                    onRemoveMovieAssignment={handleRemoveMovieAssignment}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                   />
@@ -293,7 +339,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, movieSearchResults, isSearchingMovie }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, movieSearchResults, isSearchingMovie }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -350,13 +396,24 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                 <tr className="action-row">
                   <td colSpan="5">
                     <div className="action-buttons">
-                      <button 
-                        className="find-movie-btn"
-                        onClick={() => onFindMovie(file)}
-                        disabled={isSearchingMovie}
-                      >
-                        {isSearchingMovie ? 'Searching...' : 'Find Movie'}
-                      </button>
+                      <div className="button-row">
+                        <button 
+                          className="find-movie-btn"
+                          onClick={() => onFindMovie(file)}
+                          disabled={isSearchingMovie}
+                        >
+                          {isSearchingMovie ? 'Searching...' : 'Find Movie'}
+                        </button>
+                        
+                        {file.movie && (
+                          <button 
+                            className="remove-assignment-btn"
+                            onClick={() => onRemoveMovieAssignment(file)}
+                          >
+                            Remove Assignment
+                          </button>
+                        )}
+                      </div>
                       
                       {movieSearchResults.length > 0 && (
                         <div className="movie-suggestions">

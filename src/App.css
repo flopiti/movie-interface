@@ -495,6 +495,13 @@
   gap: 15px;
 }
 
+.button-row {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: flex-start;
+}
+
 .find-movie-btn {
   padding: 10px 20px;
   border: none;
@@ -515,6 +522,23 @@
 .find-movie-btn:disabled {
   background-color: #a0aec0;
   cursor: not-allowed;
+}
+
+.remove-assignment-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: #e53e3e;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.remove-assignment-btn:hover {
+  background-color: #c53030;
+  transform: translateY(-1px);
 }
 
 .movie-suggestions {
