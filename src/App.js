@@ -26,6 +26,7 @@ const App = () => {
   const [autoProcessResults, setAutoProcessResults] = useState([]);
   const [processingFiles, setProcessingFiles] = useState(new Set()); // Track which files are currently being processed
   const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
+  const [currentConcurrencyLimit, setCurrentConcurrencyLimit] = useState(8); // Track current concurrency limit
   const processingRef = useRef(false);
 
   // Helper function to update selected file reference when files array changes
@@ -467,7 +468,9 @@ const App = () => {
     setError(null);
 
     const unprocessedFiles = files.filter(file => !file.movie);
-    const CONCURRENCY_LIMIT = 3; // Process up to 3 files simultaneously
+    // Dynamic concurrency: more files = higher concurrency, but cap at 15 for stability
+    const CONCURRENCY_LIMIT = Math.min(15, Math.max(8, Math.ceil(unprocessedFiles.length / 3)));
+    setCurrentConcurrencyLimit(CONCURRENCY_LIMIT);
     
     // Function to process a single file
     const processFile = async (file, index) => {
@@ -605,7 +608,7 @@ const App = () => {
         
         // Small delay between batches to avoid overwhelming the API
         if (i + batchSize < files.length && processingRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 100)); // Reduced delay for faster processing
         }
       }
     };
@@ -709,7 +712,7 @@ const App = () => {
                       {isAutoProcessing && (
                         <div className="processing-status">
                           <div className="parallel-status">
-                            <span>🔄 Processing {processingFiles.size} files in parallel</span>
+                            <span>🚀 Processing {processingFiles.size} files in parallel (max {currentConcurrencyLimit})</span>
                             <span className="progress-counter">
                               {completedFiles.size} / {files.filter(f => !f.movie).length} completed
                             </span>
