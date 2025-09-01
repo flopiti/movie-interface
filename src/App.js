@@ -481,15 +481,17 @@ const App = () => {
       setCurrentProcessingIndex(index);
 
       try {
-        // Search for movie
+        // Search for movie using the filename
         const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
         const searchTerm = fileName.replace(/[._-]/g, ' ').replace(/\d{4}/g, '').trim();
         
+        // Use the search API which now includes OpenAI cleaning
         const searchData = await api.movies.search(searchTerm);
         const results = searchData.tmdb_results?.results || [];
         
         if (results.length > 0) {
           const bestMatch = results[0]; // Use the first (best) result
+          console.log(`Auto-processing: Found match for "${file.name}" -> "${bestMatch.title}"`);
           
           // Assign the movie
           const assignResponse = await api.movies.assign(file.path, bestMatch);
@@ -562,6 +564,7 @@ const App = () => {
             status: 'success'
           }]);
         } else {
+          console.log(`Auto-processing: No match found for "${file.name}" (search term: "${searchTerm}")`);
           setAutoProcessResults(prev => [...prev, {
             file: file.name,
             movie: null,
@@ -625,6 +628,29 @@ const App = () => {
     setIsAutoProcessing(false);
     setCurrentProcessingIndex(-1);
     setProcessingFiles(new Set());
+    setCompletedFiles(new Set());
+    
+    // Refresh files from backend to ensure state is synchronized
+    try {
+      await fetchFiles(true); // Use duringAutoProcess=true to avoid showing loading state
+      
+      // Log summary of what was actually processed
+      const finalUnprocessedCount = files.filter(f => !f.movie).length;
+      const processedCount = autoProcessResults.filter(r => r.status === 'success').length;
+      const noMatchCount = autoProcessResults.filter(r => r.status === 'no_match').length;
+      const errorCount = autoProcessResults.filter(r => r.status === 'error').length;
+      
+      console.log(`Auto-processing completed! Summary:`);
+      console.log(`- Successfully processed: ${processedCount} files`);
+      console.log(`- No match found: ${noMatchCount} files`);
+      console.log(`- Errors: ${errorCount} files`);
+      console.log(`- Remaining unprocessed: ${finalUnprocessedCount} files`);
+      console.log(`- Files refreshed from backend`);
+      
+    } catch (err) {
+      console.error('Failed to refresh files after auto-processing:', err);
+      setError('Auto-processing completed but failed to refresh file list. Please refresh manually.');
+    }
   };
 
   return (
