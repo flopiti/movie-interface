@@ -717,6 +717,18 @@
   font-weight: normal;
 }
 
+.needs-rename-badge {
+  margin-left: 8px;
+  font-size: 14px;
+  cursor: help;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.needs-rename-badge:hover {
+  opacity: 1;
+}
+
 .no-movie {
   color: #a0aec0;
   font-style: italic;

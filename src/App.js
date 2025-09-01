@@ -28,6 +28,7 @@ const App = () => {
   const [completedFiles, setCompletedFiles] = useState(new Set()); // Track completed files
   const [currentConcurrencyLimit, setCurrentConcurrencyLimit] = useState(8); // Track current concurrency limit
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false); // Filter to show only unassigned movies
+  const [showNonStandardOnly, setShowNonStandardOnly] = useState(false); // Filter to show only files with non-standard format
   const [alternateMovieName, setAlternateMovieName] = useState(''); // State for alternate movie name input
   const processingRef = useRef(false);
 
@@ -115,6 +116,26 @@ const App = () => {
       standard_foldername: standardFoldername,
       needs_rename: currentFoldername !== standardFoldername
     };
+  };
+
+  // Helper function to check if a file needs renaming (filename or folder)
+  const needsRenaming = (file) => {
+    if (!file.movie) return false;
+    
+    // Check if the file has filenameInfo and folderInfo properties
+    // If it doesn't have these, it means it hasn't been processed yet
+    if (!file.filenameInfo && !file.folderInfo) {
+      // Generate the info to see if it needs renaming
+      const filenameInfo = generateFilenameInfo(file);
+      const folderInfo = generateFolderInfo(file);
+      return (filenameInfo && filenameInfo.needs_rename) || (folderInfo && folderInfo.needs_rename);
+    }
+    
+    // If it has the info properties, check if they indicate needs_rename
+    const filenameNeedsRename = file.filenameInfo && file.filenameInfo.needs_rename;
+    const folderNeedsRename = file.folderInfo && file.folderInfo.needs_rename;
+    
+    return filenameNeedsRename || folderNeedsRename;
   };
 
   const fetchFiles = async (duringAutoProcess = false) => {
@@ -747,6 +768,14 @@ const App = () => {
                           />
                           <span>Show only UNASSIGNED movies</span>
                         </label>
+                        <label className="filter-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={showNonStandardOnly}
+                            onChange={(e) => setShowNonStandardOnly(e.target.checked)}
+                          />
+                          <span>Show only NON-STANDARD format files</span>
+                        </label>
                       </div>
                       
                       <button 
@@ -787,10 +816,15 @@ const App = () => {
                       )}
                     </div>
                     
-                    {/* Filter Message */}
+                    {/* Filter Messages */}
                     {showUnassignedOnly && (
                       <div className="filter-active-message">
                         <span>🔍 Filtering: Showing {files.filter(f => !f.movie).length} of {files.length} files (unassigned only)</span>
+                      </div>
+                    )}
+                    {showNonStandardOnly && (
+                      <div className="filter-active-message">
+                        <span>🔍 Filtering: Showing {files.filter(f => f.movie && needsRenaming(f)).length} of {files.length} files (non-standard format only)</span>
                       </div>
                     )}
                     
@@ -846,6 +880,8 @@ const App = () => {
                     processingFiles={processingFiles}
                     completedFiles={completedFiles}
                     showUnassignedOnly={showUnassignedOnly}
+                    showNonStandardOnly={showNonStandardOnly}
+                    needsRenaming={needsRenaming}
                     alternateMovieName={alternateMovieName}
                     setAlternateMovieName={setAlternateMovieName}
                   />
@@ -932,7 +968,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly, alternateMovieName, setAlternateMovieName }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly, showNonStandardOnly, needsRenaming, alternateMovieName, setAlternateMovieName }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -949,7 +985,11 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
     setSelectedFile(selectedFile === file ? null : file);
   };
 
-  const filteredFiles = showUnassignedOnly ? files.filter(file => !file.movie) : files;
+  const filteredFiles = files.filter(file => {
+    if (showUnassignedOnly && file.movie) return false;
+    if (showNonStandardOnly && (!file.movie || !needsRenaming(file))) return false;
+    return true;
+  });
 
   return (
     <div className="files-table-container">
@@ -989,6 +1029,9 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                       <strong>{file.movie.title}</strong>
                       {file.movie.release_date && (
                         <span className="movie-year"> ({new Date(file.movie.release_date).getFullYear()})</span>
+                      )}
+                      {needsRenaming(file) && (
+                        <span className="needs-rename-badge" title="File or folder needs renaming to standard format">⚠️</span>
                       )}
                     </div>
                   ) : (
