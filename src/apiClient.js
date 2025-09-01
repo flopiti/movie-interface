@@ -135,6 +135,12 @@ export const api = {
     check: () => api.get('/health'),
   },
 
+  // Duplicates API calls
+  duplicates: {
+    // Find files that are assigned to the same movie
+    find: () => api.get('/duplicates'),
+  },
+
 
 };
 

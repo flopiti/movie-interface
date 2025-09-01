@@ -30,6 +30,8 @@ const App = () => {
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false); // Filter to show only unassigned movies
   const [showNonStandardOnly, setShowNonStandardOnly] = useState(false); // Filter to show only files with non-standard format
   const [alternateMovieName, setAlternateMovieName] = useState(''); // State for alternate movie name input
+  const [duplicates, setDuplicates] = useState({}); // State for duplicate movies
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false); // Loading state for duplicates
   const processingRef = useRef(false);
 
   // Helper function to update selected file reference when files array changes
@@ -55,6 +57,7 @@ const App = () => {
   useEffect(() => {
     fetchFiles();
     fetchMoviePaths();
+    fetchDuplicates();
   }, []);
 
   const generateFilenameInfo = (file) => {
@@ -191,6 +194,19 @@ const App = () => {
     }
   };
 
+  const fetchDuplicates = async () => {
+    setLoadingDuplicates(true);
+    try {
+      const data = await api.duplicates.find();
+      setDuplicates(data.duplicates || {});
+    } catch (err) {
+      console.error('Error fetching duplicates:', err);
+      setError('Failed to fetch duplicates: ' + err.message);
+    } finally {
+      setLoadingDuplicates(false);
+    }
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
@@ -252,6 +268,7 @@ const App = () => {
     setSearchResults([]);
     fetchFiles();
     fetchMoviePaths();
+    fetchDuplicates();
   };
 
   const handleFindMovie = async (file) => {
@@ -723,6 +740,12 @@ const App = () => {
             Movie Paths ({moviePaths.length})
           </button>
           <button 
+            className={activeTab === 'duplicates' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('duplicates')}
+          >
+            Duplicates ({Object.keys(duplicates).length})
+          </button>
+          <button 
             className={activeTab === 'search' ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab('search')}
           >
@@ -924,6 +947,45 @@ const App = () => {
                           Remove
                         </button>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Duplicates Tab */}
+            {activeTab === 'duplicates' && (
+              <section className="duplicates-section">
+                <h2>Duplicate Movies</h2>
+                
+                <div className="duplicates-controls">
+                  <button 
+                    className="refresh-duplicates-btn"
+                    onClick={fetchDuplicates}
+                    disabled={loadingDuplicates}
+                  >
+                    {loadingDuplicates ? 'Loading...' : 'Refresh Duplicates'}
+                  </button>
+                </div>
+
+                {loadingDuplicates ? (
+                  <div className="loading">
+                    <p>Loading duplicates...</p>
+                  </div>
+                ) : Object.keys(duplicates).length === 0 ? (
+                  <div className="no-duplicates">
+                    <p>✅ No duplicate movies found!</p>
+                    <p>All movies have only one file assigned.</p>
+                  </div>
+                ) : (
+                  <div className="duplicates-list">
+                    {Object.entries(duplicates).map(([movieId, movieData]) => (
+                      <DuplicateMovieCard 
+                        key={movieId} 
+                        movieData={movieData} 
+                        onDeleteFile={handleDeleteFile}
+                        deletingFileId={deletingFileId}
+                      />
                     ))}
                   </div>
                 )}
@@ -1232,6 +1294,66 @@ const FileCard = ({ file }) => {
       {file.source_path && (
         <p className="file-source">Source: {file.source_path}</p>
       )}
+    </div>
+  );
+};
+
+// Duplicate Movie Card Component
+const DuplicateMovieCard = ({ movieData, onDeleteFile, deletingFileId }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  return (
+    <div className="duplicate-movie-card">
+      <div className="duplicate-movie-header">
+        <h3 className="duplicate-movie-title">
+          {movieData.movie_info.title}
+          {movieData.movie_info.release_date && (
+            <span className="duplicate-movie-year">
+              {' '}({new Date(movieData.movie_info.release_date).getFullYear()})
+            </span>
+          )}
+        </h3>
+        <div className="duplicate-count">
+          <span className="duplicate-badge">
+            {movieData.files.length} duplicate files
+          </span>
+        </div>
+      </div>
+      
+      <div className="duplicate-files-list">
+        <h4>Duplicate Files:</h4>
+        {movieData.files.map((file, index) => (
+          <div key={index} className="duplicate-file-item">
+            <div className="duplicate-file-info">
+              <div className="duplicate-file-name">{file.name}</div>
+              <div className="duplicate-file-details">
+                <span className="duplicate-file-size">{formatFileSize(file.size)}</span>
+                <span className="duplicate-file-date">Modified: {formatDate(file.modified)}</span>
+                <span className="duplicate-file-directory">{file.directory}</span>
+              </div>
+            </div>
+            <div className="duplicate-file-actions">
+              <button 
+                className="delete-duplicate-btn"
+                onClick={() => onDeleteFile(file)}
+                disabled={deletingFileId !== null}
+              >
+                {deletingFileId === file.path ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
