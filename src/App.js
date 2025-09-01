@@ -21,12 +21,94 @@ const App = () => {
     fetchMoviePaths();
   }, []);
 
+  const generateFilenameInfo = (file) => {
+    if (!file.movie) return null;
+    
+    // Generate standard filename: Title_YYYY.extension
+    const title = file.movie.title || 'Unknown_Movie';
+    const releaseDate = file.movie.release_date || '';
+    
+    let year = '';
+    if (releaseDate) {
+      try {
+        year = releaseDate.split('-')[0]; // Extract year from YYYY-MM-DD format
+      } catch (e) {
+        // Ignore error
+      }
+    }
+    
+    // Clean title: remove special characters and replace spaces with underscores
+    const cleanTitle = title.replace(' ', '_').replace(/[^a-zA-Z0-9_-]/g, '');
+    
+    // Extract file extension
+    const extension = file.name ? file.name.substring(file.name.lastIndexOf('.')) : '';
+    const standardFilename = year ? `${cleanTitle}_${year}${extension}` : `${cleanTitle}${extension}`;
+    
+    return {
+      current_filename: file.name,
+      standard_filename: standardFilename,
+      needs_rename: file.name !== standardFilename
+    };
+  };
+
+  const generateFolderInfo = (file) => {
+    if (!file.movie) return null;
+    
+    // Extract folder name from directory path
+    const currentFoldername = file.directory ? file.directory.split('/').pop() : '';
+    
+    // Generate standard folder name: Title_YYYY
+    const title = file.movie.title || 'Unknown_Movie';
+    const releaseDate = file.movie.release_date || '';
+    
+    let year = '';
+    if (releaseDate) {
+      try {
+        year = releaseDate.split('-')[0]; // Extract year from YYYY-MM-DD format
+      } catch (e) {
+        // Ignore error
+      }
+    }
+    
+    // Clean title: remove special characters and replace spaces with underscores
+    const cleanTitle = title.replace(' ', '_').replace(/[^a-zA-Z0-9_-]/g, '');
+    const standardFoldername = year ? `${cleanTitle}_${year}` : cleanTitle;
+    
+    return {
+      current_foldername: currentFoldername,
+      current_folder_path: file.directory,
+      standard_foldername: standardFoldername,
+      needs_rename: currentFoldername !== standardFoldername
+    };
+  };
+
   const fetchFiles = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await api.files.getAll();
-      setFiles(data.files || []);
+      
+      // Add missing filename and folder info for existing assignments
+      const filesWithInfo = (data.files || []).map(file => {
+        if (file.movie) {
+          const updates = {};
+          
+          // Add filename info if missing
+          if (!file.filenameInfo) {
+            updates.filenameInfo = generateFilenameInfo(file);
+          }
+          
+          // Add folder info if missing
+          if (!file.folderInfo) {
+            updates.folderInfo = generateFolderInfo(file);
+          }
+          
+          return { ...file, ...updates };
+        }
+        return file;
+      });
+      
+      setFiles(filesWithInfo);
     } catch (err) {
       setError('Failed to fetch files: ' + err.message);
       console.error('Error fetching files:', err);
@@ -259,6 +341,40 @@ const App = () => {
     }
   };
 
+  const handleDeleteFile = async (file) => {
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Send the delete request to the backend
+      const response = await api.movies.deleteFile(file.path);
+      
+      // Remove the file from the files list
+      setFiles(prevFiles => prevFiles.filter(f => f.path !== file.path));
+      
+      // Clear selection if this file was selected
+      if (selectedFile === file) {
+        setSelectedFile(null);
+        setMovieSearchResults([]);
+      }
+      
+      console.log(`Successfully deleted file: "${response.file_name}" (${response.file_size} bytes)`);
+      if (response.had_movie_assignment) {
+        console.log('Movie assignment was also removed');
+      }
+    } catch (err) {
+      setError('Failed to delete file: ' + err.message);
+      console.error('Error deleting file:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -330,6 +446,7 @@ const App = () => {
                     onRemoveMovieAssignment={handleRemoveMovieAssignment}
                     onRenameFile={handleRenameFile}
                     onRenameFolder={handleRenameFolder}
+                    onDeleteFile={handleDeleteFile}
                     movieSearchResults={movieSearchResults}
                     isSearchingMovie={isSearchingMovie}
                   />
@@ -415,7 +532,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, movieSearchResults, isSearchingMovie }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -489,6 +606,14 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                             Remove Assignment
                           </button>
                         )}
+                        
+                        <button 
+                          className="delete-file-btn"
+                          onClick={() => onDeleteFile(file)}
+                          style={{ backgroundColor: '#dc3545', color: 'white' }}
+                        >
+                          Delete File
+                        </button>
                       </div>
 
                       {/* Filename Information Display */}

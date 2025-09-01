@@ -123,6 +123,11 @@ export const api = {
       folder_path: currentFolderPath,
       new_foldername: newFoldername
     }),
+
+    // Delete a movie file
+    deleteFile: (filePath) => api.delete('/delete-file', { 
+      file_path: filePath 
+    }),
   },
 
   // Health check
