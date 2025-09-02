@@ -91,16 +91,14 @@ const MovieComparison = () => {
         <button 
           className={`tab ${activeTab === 'plex-only' ? 'active' : ''}`}
           onClick={() => setActiveTab('plex-only')}
-          disabled={true}
         >
-          Only in Plex (Disabled)
+          Only in Plex ({summary.only_in_plex})
         </button>
         <button 
           className={`tab ${activeTab === 'assigned-only' ? 'active' : ''}`}
           onClick={() => setActiveTab('assigned-only')}
-          disabled={true}
         >
-          Only Assigned (Disabled)
+          Only Assigned ({summary.only_in_assigned})
         </button>
       </div>
 
@@ -131,11 +129,7 @@ const MovieComparison = () => {
               <div className="movie-grid">
                 {only_in_plex.map((movie, index) => (
                   <div key={index} className="movie-item plex-only">
-                    <div className="movie-title">{movie.title}</div>
-                    <div className="movie-year">{movie.year}</div>
-                    {movie.file_path && (
-                      <div className="movie-path">{movie.file_path}</div>
-                    )}
+                    <div className="movie-title">{movie}</div>
                   </div>
                 ))}
               </div>
@@ -152,9 +146,7 @@ const MovieComparison = () => {
               <div className="movie-grid">
                 {only_in_assigned.map((movie, index) => (
                   <div key={index} className="movie-item assigned-only">
-                    <div className="movie-title">{movie.title}</div>
-                    <div className="movie-year">{movie.year}</div>
-                    <div className="movie-path">{movie.file_path}</div>
+                    <div className="movie-title">{movie}</div>
                   </div>
                 ))}
               </div>
