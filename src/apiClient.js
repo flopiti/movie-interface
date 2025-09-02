@@ -135,6 +135,25 @@ export const api = {
     check: () => api.get('/health'),
   },
 
+  // Plex API calls
+  plex: {
+    // Get all Plex libraries
+    getLibraries: () => api.get('/plex/libraries'),
+    
+    // Get movie count from Plex
+    getMovieCount: () => api.get('/plex/movie-count'),
+    
+    // Get all movies from Plex
+    getAllMovies: () => api.get('/plex/movies'),
+    
+    // Search movies in Plex
+    searchMovies: (query, libraryId = null) => {
+      const params = { q: query };
+      if (libraryId) params.library_id = libraryId;
+      return api.get('/plex/search', params);
+    },
+  },
+
   // Duplicates API calls
   duplicates: {
     // Find files that are assigned to the same movie
