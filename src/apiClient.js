@@ -154,6 +154,12 @@ export const api = {
     },
   },
 
+  // Movie comparison API calls
+  comparison: {
+    // Compare Plex movies with assigned movies
+    compareMovies: () => api.get('/compare-movies'),
+  },
+
   // Duplicates API calls
   duplicates: {
     // Find files that are assigned to the same movie

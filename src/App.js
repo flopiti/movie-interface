@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from './apiClient';
+import MovieComparison from './MovieComparison';
 import './App.css';
 
 const App = () => {
@@ -805,6 +806,12 @@ const App = () => {
           >
             TMDB Search
           </button>
+          <button 
+            className={activeTab === 'comparison' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('comparison')}
+          >
+            Plex Comparison
+          </button>
         </nav>
 
         {/* Loading State */}
@@ -1129,6 +1136,11 @@ const App = () => {
                   </div>
                 )}
               </section>
+            )}
+
+            {/* Comparison Tab */}
+            {activeTab === 'comparison' && (
+              <MovieComparison />
             )}
           </>
         )}
