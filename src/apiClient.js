@@ -141,6 +141,17 @@ export const api = {
     find: () => api.get('/duplicates'),
   },
 
+  // Orphaned files API calls
+  orphanedFiles: {
+    // Find files that are directly in movie paths
+    find: () => api.get('/orphaned-files'),
+    
+    // Move a file to its own folder
+    moveToFolder: (filePath) => api.post('/move-to-folder', { 
+      file_path: filePath 
+    }),
+  },
+
 
 };
 

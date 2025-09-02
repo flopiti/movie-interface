@@ -1448,6 +1448,192 @@
   text-transform: uppercase;
 }
 
+/* Orphaned Files Section */
+.orphaned-section {
+  margin-bottom: 30px;
+}
+
+.orphaned-controls {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.refresh-orphaned-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-orphaned-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.refresh-orphaned-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-orphaned {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f0f9ff;
+  border: 2px solid #bae6fd;
+  border-radius: 10px;
+  color: #0369a1;
+}
+
+.no-orphaned p {
+  margin: 10px 0;
+  font-size: 16px;
+}
+
+.no-orphaned p:first-child {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.orphaned-summary {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+}
+
+.orphaned-summary p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.orphaned-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.orphaned-file-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.orphaned-file-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.orphaned-file-info {
+  flex: 1;
+}
+
+.orphaned-file-name {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.orphaned-file-details {
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.orphaned-file-size {
+  font-weight: 500;
+}
+
+.orphaned-file-date {
+  font-weight: 500;
+}
+
+.orphaned-file-directory {
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orphaned-file-movie {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.movie-assigned-badge {
+  background: #10b981;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.no-movie-badge {
+  background: #f59e0b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.movie-title {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.orphaned-file-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.move-to-folder-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.move-to-folder-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.move-to-folder-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .app {
@@ -1555,5 +1741,29 @@
   
   .duplicate-file-actions {
     align-self: flex-end;
+  }
+  
+  .orphaned-file-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .orphaned-file-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .orphaned-file-directory {
+    max-width: none;
+  }
+  
+  .orphaned-file-actions {
+    align-self: flex-end;
+    width: 100%;
+  }
+  
+  .move-to-folder-btn {
+    width: 100%;
   }
 }

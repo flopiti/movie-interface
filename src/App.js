@@ -32,6 +32,9 @@ const App = () => {
   const [alternateMovieName, setAlternateMovieName] = useState(''); // State for alternate movie name input
   const [duplicates, setDuplicates] = useState({}); // State for duplicate movies
   const [loadingDuplicates, setLoadingDuplicates] = useState(false); // Loading state for duplicates
+  const [orphanedFiles, setOrphanedFiles] = useState([]); // State for orphaned files
+  const [loadingOrphanedFiles, setLoadingOrphanedFiles] = useState(false); // Loading state for orphaned files
+  const [movingFileId, setMovingFileId] = useState(null); // State for file being moved
   const processingRef = useRef(false);
 
   // Helper function to update selected file reference when files array changes
@@ -58,6 +61,7 @@ const App = () => {
     fetchFiles();
     fetchMoviePaths();
     fetchDuplicates();
+    fetchOrphanedFiles();
   }, []);
 
   const generateFilenameInfo = (file) => {
@@ -207,6 +211,19 @@ const App = () => {
     }
   };
 
+  const fetchOrphanedFiles = async () => {
+    setLoadingOrphanedFiles(true);
+    try {
+      const data = await api.orphanedFiles.find();
+      setOrphanedFiles(data.orphaned_files || []);
+    } catch (err) {
+      console.error('Error fetching orphaned files:', err);
+      setError('Failed to fetch orphaned files: ' + err.message);
+    } finally {
+      setLoadingOrphanedFiles(false);
+    }
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
@@ -269,6 +286,7 @@ const App = () => {
     fetchFiles();
     fetchMoviePaths();
     fetchDuplicates();
+    fetchOrphanedFiles();
   };
 
   const handleFindMovie = async (file) => {
@@ -493,6 +511,36 @@ const App = () => {
       setError('Failed to delete file: ' + err.message);
       console.error('Error deleting file:', err);
       setDeletingFileId(null); // Reset on error
+    }
+  };
+
+  const handleMoveToFolder = async (file) => {
+    const fileId = file.path;
+    setMovingFileId(fileId);
+    setError(null);
+    setSuccessMessage('');
+    
+    try {
+      // Send the move request to the backend
+      const response = await api.orphanedFiles.moveToFolder(file.path);
+      
+      // Remove from orphaned files list
+      setOrphanedFiles(prevFiles => prevFiles.filter(f => f.path !== file.path));
+      
+      // Show success message
+      setSuccessMessage(`Successfully moved "${file.name}" to folder "${response.folder_name}"`);
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
+      console.log(`Successfully moved "${file.name}" to folder "${response.folder_name}"`);
+    } catch (err) {
+      setError('Failed to move file: ' + err.message);
+      console.error('Error moving file:', err);
+    } finally {
+      setMovingFileId(null);
     }
   };
 
@@ -746,6 +794,12 @@ const App = () => {
             Duplicates ({Object.keys(duplicates).length})
           </button>
           <button 
+            className={activeTab === 'orphaned' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('orphaned')}
+          >
+            Orphaned Files ({orphanedFiles.length})
+          </button>
+          <button 
             className={activeTab === 'search' ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab('search')}
           >
@@ -991,6 +1045,53 @@ const App = () => {
                           movieData={movieData} 
                           onDeleteFile={handleDeleteFile}
                           deletingFileId={deletingFileId}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* Orphaned Files Tab */}
+            {activeTab === 'orphaned' && (
+              <section className="orphaned-section">
+                <h2>Orphaned Files</h2>
+                
+                <div className="orphaned-controls">
+                  <button 
+                    className="refresh-orphaned-btn"
+                    onClick={fetchOrphanedFiles}
+                    disabled={loadingOrphanedFiles}
+                  >
+                    {loadingOrphanedFiles ? 'Loading...' : 'Refresh Orphaned Files'}
+                  </button>
+                </div>
+
+                {loadingOrphanedFiles ? (
+                  <div className="loading">
+                    <p>Loading orphaned files...</p>
+                  </div>
+                ) : orphanedFiles.length === 0 ? (
+                  <div className="no-orphaned">
+                    <p>✅ No orphaned files found!</p>
+                    <p>All files are properly organized in folders.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="orphaned-summary">
+                      <p>
+                        Found {orphanedFiles.length} files that need to be moved to their own folders.
+                      </p>
+                    </div>
+                    <div className="orphaned-files-list">
+                      {orphanedFiles.map((file, index) => (
+                        <OrphanedFileCard 
+                          key={index} 
+                          file={file} 
+                          onMoveToFolder={handleMoveToFolder}
+                          movingFileId={movingFileId}
+                          successMessage={successMessage}
                         />
                       ))}
                     </div>
@@ -1301,6 +1402,59 @@ const FileCard = ({ file }) => {
       {file.source_path && (
         <p className="file-source">Source: {file.source_path}</p>
       )}
+    </div>
+  );
+};
+
+// Orphaned File Card Component
+const OrphanedFileCard = ({ file, onMoveToFolder, movingFileId, successMessage }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  return (
+    <div className="orphaned-file-card">
+      <div className="orphaned-file-info">
+        <div className="orphaned-file-name">{file.name}</div>
+        <div className="orphaned-file-details">
+          <span className="orphaned-file-size">{formatFileSize(file.size)}</span>
+          <span className="orphaned-file-date">Modified: {formatDate(file.modified)}</span>
+          <span className="orphaned-file-directory">{file.directory}</span>
+        </div>
+        {file.movie_assigned && (
+          <div className="orphaned-file-movie">
+            <span className="movie-assigned-badge">✓ Movie Assigned</span>
+            <span className="movie-title">{file.movie_title}</span>
+          </div>
+        )}
+        {!file.movie_assigned && (
+          <div className="orphaned-file-movie">
+            <span className="no-movie-badge">⚠️ No Movie Assignment</span>
+          </div>
+        )}
+      </div>
+      <div className="orphaned-file-actions">
+        {successMessage && successMessage.includes('moved') && (
+          <div className="success-message">
+            ✓ {successMessage}
+          </div>
+        )}
+        <button 
+          className="move-to-folder-btn"
+          onClick={() => onMoveToFolder(file)}
+          disabled={movingFileId !== null || !file.movie_assigned}
+        >
+          {movingFileId === file.path ? 'Moving...' : 'Move to Folder'}
+        </button>
+      </div>
     </div>
   );
 };
