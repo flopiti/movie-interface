@@ -21,6 +21,26 @@ const MovieComparison = () => {
     }
   };
 
+  const handleCleanup = async () => {
+    if (!window.confirm('This will remove all movie assignments for files that no longer exist. Are you sure?')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await api.movies.cleanupOrphanedAssignments();
+      alert(`Cleanup completed!\n\nRemoved ${result.assignments_removed} orphaned assignments out of ${result.orphaned_assignments_found} found.\n\nTotal assignments checked: ${result.total_assignments_checked}`);
+      
+      // Refresh the comparison data
+      await fetchComparison();
+    } catch (err) {
+      setError('Cleanup failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchComparison();
   }, []);
@@ -50,13 +70,59 @@ const MovieComparison = () => {
     );
   }
 
-  const { summary, only_in_plex, only_in_assigned } = comparison;
+  const { summary, only_in_plex, only_in_assigned, plex_movies, assigned_movies } = comparison;
+
+  // Create side-by-side comparison data
+  const createSideBySideComparison = () => {
+    // The backend returns the actual movies that are in both lists
+    const plexMovies = plex_movies || [];
+    const assignedMovies = assigned_movies || [];
+    
+    const comparison = [];
+    
+    // Show the actual movies that are in both lists
+    plexMovies.forEach((movieTitle, index) => {
+      comparison.push({
+        index: index + 1,
+        plex: movieTitle,
+        assigned: movieTitle,
+        status: 'both'
+      });
+    });
+    
+    // Add the movies that are only in Plex
+    only_in_plex.forEach((movieTitle, index) => {
+      comparison.push({
+        index: comparison.length + 1,
+        plex: movieTitle,
+        assigned: null,
+        status: 'plex-only'
+      });
+    });
+    
+    // Add the movies that are only assigned
+    only_in_assigned.forEach((movieTitle, index) => {
+      comparison.push({
+        index: comparison.length + 1,
+        plex: null,
+        assigned: movieTitle,
+        status: 'assigned-only'
+      });
+    });
+    
+    return comparison;
+  };
+
+  const sideBySideData = createSideBySideComparison();
 
   return (
     <div className="comparison-container">
       <div className="comparison-header">
         <h2>Movie Comparison: Plex vs Assigned Movies</h2>
-        <button onClick={fetchComparison} className="refresh-button">Refresh</button>
+        <div className="header-buttons">
+          <button onClick={fetchComparison} className="refresh-button">Refresh</button>
+          <button onClick={handleCleanup} className="cleanup-button">Cleanup Orphaned Assignments</button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -89,6 +155,12 @@ const MovieComparison = () => {
           Summary
         </button>
         <button 
+          className={`tab ${activeTab === 'side-by-side' ? 'active' : ''}`}
+          onClick={() => setActiveTab('side-by-side')}
+        >
+          Side-by-Side Comparison ({sideBySideData.length})
+        </button>
+        <button 
           className={`tab ${activeTab === 'plex-only' ? 'active' : ''}`}
           onClick={() => setActiveTab('plex-only')}
         >
@@ -117,6 +189,70 @@ const MovieComparison = () => {
                 <strong>Note:</strong> {comparison.note}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'side-by-side' && (
+          <div className="side-by-side-comparison">
+            <div className="comparison-header-row">
+              <div className="comparison-number-header">#</div>
+              <div className="comparison-plex-header">Plex Movies</div>
+              <div className="comparison-assigned-header">Assigned Movies</div>
+              <div className="comparison-status-header">Status</div>
+            </div>
+            
+            <div className="comparison-list">
+              {sideBySideData.map((item) => (
+                <div key={item.index} className={`comparison-row ${item.status}`}>
+                  <div className="comparison-number">{item.index}</div>
+                  <div className="comparison-plex-movie">
+                    {item.plex ? (
+                      <span className="movie-title">{item.plex}</span>
+                    ) : (
+                      <span className="no-movie">—</span>
+                    )}
+                  </div>
+                  <div className="comparison-assigned-movie">
+                    {item.assigned ? (
+                      <span className="movie-title">{item.assigned}</span>
+                    ) : (
+                      <span className="no-movie">—</span>
+                    )}
+                  </div>
+                  <div className="comparison-status">
+                    {item.status === 'both' && <span className="status-both">✓ Both</span>}
+                    {item.status === 'plex-only' && <span className="status-plex-only">⚠ Plex Only</span>}
+                    {item.status === 'assigned-only' && <span className="status-assigned-only">⚠ Assigned Only</span>}
+                    {item.status === 'empty' && <span className="status-empty">—</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="comparison-summary">
+              <div className="summary-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Total Rows:</span>
+                  <span className="stat-value">{sideBySideData.length}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Both Present:</span>
+                  <span className="stat-value">{sideBySideData.filter(item => item.status === 'both').length}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Plex Only:</span>
+                  <span className="stat-value">{sideBySideData.filter(item => item.status === 'plex-only').length}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Assigned Only:</span>
+                  <span className="stat-value">{sideBySideData.filter(item => item.status === 'assigned-only').length}</span>
+                </div>
+              </div>
+              <div className="comparison-note">
+                <p><strong>Note:</strong> This shows the actual movies from the backend. 
+                If the counts don't match the summary, the backend may not be returning all missing movies.</p>
+              </div>
+            </div>
           </div>
         )}
 

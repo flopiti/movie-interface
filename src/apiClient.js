@@ -112,6 +112,9 @@ export const api = {
       file_path: filePath 
     }),
     
+    // Cleanup orphaned movie assignments
+    cleanupOrphanedAssignments: () => api.post('/cleanup-orphaned-assignments'),
+    
     // Rename a file to standard format
     renameFile: (currentPath, newFilename) => api.post('/rename-file', {
       file_path: currentPath,
@@ -168,13 +171,14 @@ export const api = {
 
   // Orphaned files API calls
   orphanedFiles: {
-    // Find files that are directly in movie paths
+    // Find files that are assigned to movies but don't exist
     find: () => api.get('/orphaned-files'),
-    
-    // Move a file to its own folder
-    moveToFolder: (filePath) => api.post('/move-to-folder', { 
-      file_path: filePath 
-    }),
+  },
+
+  // Firebase cleanup API calls
+  firebase: {
+    // Cleanup orphaned assignments in Firebase
+    cleanup: () => api.post('/firebase-cleanup'),
   },
 
 

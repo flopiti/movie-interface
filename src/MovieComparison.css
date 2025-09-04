@@ -11,6 +11,25 @@
   margin-bottom: 30px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.cleanup-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cleanup-button:hover {
+  background: #c82333;
+}
+
 .comparison-header h2 {
   margin: 0;
   color: #333;
@@ -91,6 +110,7 @@
   display: flex;
   border-bottom: 2px solid #eee;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -152,6 +172,162 @@
   border-radius: 5px;
   color: #856404;
   text-align: center;
+}
+
+/* Side-by-Side Comparison */
+.side-by-side-comparison {
+  overflow-x: auto;
+}
+
+.comparison-header-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 120px;
+  gap: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.comparison-number-header {
+  text-align: center;
+}
+
+.comparison-plex-header {
+  color: #28a745;
+}
+
+.comparison-assigned-header {
+  color: #ffc107;
+}
+
+.comparison-status-header {
+  text-align: center;
+}
+
+.comparison-list {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0 0 8px 8px;
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 120px;
+  gap: 15px;
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s ease;
+}
+
+.comparison-row:hover {
+  background-color: #f8f9fa;
+}
+
+.comparison-row.both {
+  background-color: #f8fff9;
+}
+
+.comparison-row.plex-only {
+  background-color: #fff5f5;
+}
+
+.comparison-row.assigned-only {
+  background-color: #f8f5ff;
+}
+
+.comparison-number {
+  text-align: center;
+  font-weight: bold;
+  color: #666;
+  font-size: 14px;
+}
+
+.comparison-plex-movie,
+.comparison-assigned-movie {
+  padding: 5px 0;
+}
+
+.movie-title {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.no-movie {
+  color: #ccc;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.comparison-status {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-both {
+  color: #28a745;
+  background: #d4edda;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.status-plex-only {
+  color: #dc3545;
+  background: #f8d7da;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.status-assigned-only {
+  color: #6f42c1;
+  background: #e2d9f3;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.status-empty {
+  color: #ccc;
+}
+
+.comparison-summary {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: #666;
+  font-size: 14px;
+}
+
+.stat-value {
+  font-weight: bold;
+  color: #333;
+  font-size: 16px;
 }
 
 /* Movie Lists */
@@ -249,5 +425,85 @@
   
   .movie-grid {
     grid-template-columns: 1fr;
+  }
+  
+  /* Mobile responsive for side-by-side comparison */
+  .comparison-header-row,
+  .comparison-row {
+    grid-template-columns: 40px 1fr 1fr 80px;
+    gap: 8px;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  
+  .comparison-number-header,
+  .comparison-status-header {
+    font-size: 11px;
+  }
+  
+  .comparison-plex-header,
+  .comparison-assigned-header {
+    font-size: 11px;
+  }
+  
+  .movie-title {
+    font-size: 12px;
+  }
+  
+  .no-movie {
+    font-size: 12px;
+  }
+  
+  .comparison-status {
+    font-size: 10px;
+  }
+  
+  .status-both,
+  .status-plex-only,
+  .status-assigned-only {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  
+  .summary-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .comparison-header-row,
+  .comparison-row {
+    grid-template-columns: 30px 1fr 1fr 60px;
+    gap: 5px;
+    padding: 8px 5px;
+  }
+  
+  .comparison-number {
+    font-size: 12px;
+  }
+  
+  .movie-title {
+    font-size: 11px;
+  }
+  
+  .no-movie {
+    font-size: 11px;
+  }
+  
+  .comparison-status {
+    font-size: 9px;
+  }
+  
+  .status-both,
+  .status-plex-only,
+  .status-assigned-only {
+    padding: 1px 4px;
+    font-size: 9px;
   }
 }
