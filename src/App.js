@@ -6,13 +6,15 @@ import './App.css';
 const App = () => {
   const [files, setFiles] = useState([]);
   const [moviePaths, setMoviePaths] = useState([]);
+  const [mediaPaths, setMediaPaths] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingFiles, setFetchingFiles] = useState(false); // Separate state for file fetching during autoprocess
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPath, setNewPath] = useState('');
-  const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'search'
+  const [newMediaPath, setNewMediaPath] = useState('');
+  const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'media-paths', 'search'
   const [selectedFile, setSelectedFile] = useState(null);
   const [movieSearchResults, setMovieSearchResults] = useState([]);
   const [isSearchingMovie, setIsSearchingMovie] = useState(false);
@@ -65,6 +67,7 @@ const App = () => {
   useEffect(() => {
     fetchFiles();
     fetchMoviePaths();
+    fetchMediaPaths();
     fetchDuplicates();
     fetchOrphanedFiles();
   }, []);
@@ -203,6 +206,15 @@ const App = () => {
     }
   };
 
+  const fetchMediaPaths = async () => {
+    try {
+      const data = await api.mediaPaths.getAll();
+      setMediaPaths(data.media_paths || []);
+    } catch (err) {
+      console.error('Error fetching media paths:', err);
+    }
+  };
+
   const fetchDuplicates = async () => {
     setLoadingDuplicates(true);
     try {
@@ -285,11 +297,72 @@ const App = () => {
     }
   };
 
+  const handleAddMediaPath = async (e) => {
+    e.preventDefault();
+    if (!newMediaPath.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      await api.mediaPaths.add(newMediaPath.trim());
+      setNewMediaPath('');
+      await fetchMediaPaths();
+    } catch (err) {
+      setError('Failed to add media path: ' + err.message);
+      console.error('Error adding media path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveMediaPath = async (path) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.mediaPaths.remove(path);
+      await fetchMediaPaths();
+    } catch (err) {
+      setError('Failed to remove media path: ' + err.message);
+      console.error('Error removing media path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshMediaPathsSpace = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.mediaPaths.refreshAll();
+      await fetchMediaPaths();
+    } catch (err) {
+      setError('Failed to refresh space information: ' + err.message);
+      console.error('Error refreshing media paths space:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshSingleMediaPathSpace = async (path) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.mediaPaths.refresh(path);
+      await fetchMediaPaths();
+    } catch (err) {
+      setError('Failed to refresh space information: ' + err.message);
+      console.error('Error refreshing media path space:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
     setSearchQuery('');
     setSearchResults([]);
     fetchFiles();
     fetchMoviePaths();
+    fetchMediaPaths();
     fetchDuplicates();
     fetchOrphanedFiles();
   };
@@ -980,6 +1053,12 @@ const App = () => {
             Movie Paths ({moviePaths.length})
           </button>
           <button 
+            className={activeTab === 'media-paths' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('media-paths')}
+          >
+            Media Paths ({mediaPaths.length})
+          </button>
+          <button 
             className={activeTab === 'duplicates' ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab('duplicates')}
           >
@@ -1268,6 +1347,54 @@ const App = () => {
                           Remove
                         </button>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Media Paths Tab */}
+            {activeTab === 'media-paths' && (
+              <section className="media-paths-section">
+                <h2>Media Paths</h2>
+                
+                <div className="media-paths-controls">
+                  <button 
+                    className="refresh-space-btn"
+                    onClick={handleRefreshMediaPathsSpace}
+                    disabled={loading}
+                  >
+                    {loading ? 'Refreshing...' : 'Refresh All Space Info'}
+                  </button>
+                </div>
+                
+                {/* Add Media Path Form */}
+                <form onSubmit={handleAddMediaPath} className="add-path-form">
+                  <input
+                    type="text"
+                    placeholder="Enter media directory path..."
+                    value={newMediaPath}
+                    onChange={(e) => setNewMediaPath(e.target.value)}
+                    className="path-input"
+                  />
+                  <button type="submit" className="add-button">
+                    Add Media Path
+                  </button>
+                </form>
+
+                {/* Media Paths List */}
+                {mediaPaths.length === 0 ? (
+                  <p className="no-paths">No media paths configured</p>
+                ) : (
+                  <div className="media-paths-list">
+                    {mediaPaths.map((pathInfo, index) => (
+                      <MediaPathCard 
+                        key={index} 
+                        pathInfo={pathInfo}
+                        onRemove={handleRemoveMediaPath}
+                        onRefreshSpace={handleRefreshSingleMediaPathSpace}
+                        loading={loading}
+                      />
                     ))}
                   </div>
                 )}
@@ -1834,6 +1961,128 @@ const MovieCard = ({ movie }) => {
       )}
       {movie.overview && (
         <p className="movie-description">{movie.overview}</p>
+      )}
+    </div>
+  );
+};
+
+// Media Path Card Component
+const MediaPathCard = ({ pathInfo, onRemove, onRefreshSpace, loading }) => {
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Never';
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  const getUsageColor = (percentage) => {
+    if (percentage >= 90) return '#ff4444'; // Red
+    if (percentage >= 75) return '#ffaa00'; // Orange
+    if (percentage >= 50) return '#ffdd00'; // Yellow
+    return '#44ff44'; // Green
+  };
+
+  return (
+    <div className="media-path-card">
+      <div className="media-path-header">
+        <div className="media-path-info">
+          <h3 className="media-path-title">{pathInfo.path}</h3>
+          <div className="media-path-status">
+            {pathInfo.exists ? (
+              <span className="status-exists">✓ Path exists</span>
+            ) : (
+              <span className="status-missing">✗ Path not found</span>
+            )}
+            {pathInfo.error && (
+              <span className="status-error">Error: {pathInfo.error}</span>
+            )}
+          </div>
+        </div>
+        <div className="media-path-actions">
+          <button 
+            className="refresh-single-space-btn"
+            onClick={() => onRefreshSpace(pathInfo.path)}
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Space'}
+          </button>
+          <button 
+            className="remove-media-path-btn"
+            onClick={() => onRemove(pathInfo.path)}
+            disabled={loading}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+      
+      {pathInfo.exists && !pathInfo.error && (
+        <div className="media-path-space-info">
+          <div className="space-summary">
+            <div className="space-item">
+              <span className="space-label">Total Space:</span>
+              <span className="space-value">{pathInfo.total_space_gb} GB</span>
+            </div>
+            <div className="space-item">
+              <span className="space-label">Used Space:</span>
+              <span className="space-value">{pathInfo.used_space_gb} GB</span>
+            </div>
+            <div className="space-item">
+              <span className="space-label">Free Space:</span>
+              <span className="space-value">{pathInfo.free_space_gb} GB</span>
+            </div>
+            <div className="space-item">
+              <span className="space-label">Usage:</span>
+              <span 
+                className="space-value usage-percentage"
+                style={{ color: getUsageColor(pathInfo.usage_percentage) }}
+              >
+                {pathInfo.usage_percentage}%
+              </span>
+            </div>
+          </div>
+          
+          <div className="space-visualization">
+            <div className="space-bar">
+              <div 
+                className="space-bar-used"
+                style={{ 
+                  width: `${pathInfo.usage_percentage}%`,
+                  backgroundColor: getUsageColor(pathInfo.usage_percentage)
+                }}
+              ></div>
+            </div>
+            <div className="space-bar-labels">
+              <span>Used ({pathInfo.used_space_gb} GB)</span>
+              <span>Free ({pathInfo.free_space_gb} GB)</span>
+            </div>
+          </div>
+          
+          <div className="space-details">
+            <div className="space-detail-item">
+              <span className="detail-label">Total:</span>
+              <span className="detail-value">{formatBytes(pathInfo.total_space)}</span>
+            </div>
+            <div className="space-detail-item">
+              <span className="detail-label">Used:</span>
+              <span className="detail-value">{formatBytes(pathInfo.used_space)}</span>
+            </div>
+            <div className="space-detail-item">
+              <span className="detail-label">Free:</span>
+              <span className="detail-value">{formatBytes(pathInfo.free_space)}</span>
+            </div>
+            <div className="space-detail-item">
+              <span className="detail-label">Last Updated:</span>
+              <span className="detail-value">{formatDate(pathInfo.last_updated)}</span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

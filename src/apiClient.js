@@ -90,6 +90,24 @@ export const api = {
     remove: (path) => api.delete('/movie-file-paths', { path }),
   },
 
+  // Media paths management API calls
+  mediaPaths: {
+    // Get all configured media paths with space information
+    getAll: () => api.get('/media-paths'),
+    
+    // Add a new media path
+    add: (path) => api.put('/media-paths', { path }),
+    
+    // Remove a media path
+    remove: (path) => api.delete('/media-paths', { path }),
+    
+    // Refresh space information for all media paths
+    refreshAll: () => api.post('/media-paths/refresh'),
+    
+    // Refresh space information for a specific media path
+    refresh: (path) => api.post(`/media-paths/refresh`, { path }),
+  },
+
   // Movie files API calls
   files: {
     // Get all media files from all configured paths
