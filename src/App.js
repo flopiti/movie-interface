@@ -37,6 +37,10 @@ const App = () => {
   const [loadingOrphanedFiles, setLoadingOrphanedFiles] = useState(false); // Loading state for orphaned files
   const [movingFileId, setMovingFileId] = useState(null); // State for file being moved
   const processingRef = useRef(false);
+  const [workerCount, setWorkerCount] = useState(1); // State for worker count
+  const [selectedFiles, setSelectedFiles] = useState(new Set()); // State for bulk selection
+  const [isBulkRenaming, setIsBulkRenaming] = useState(false); // State for bulk rename operation
+  const [bulkRenameProgress, setBulkRenameProgress] = useState({ current: 0, total: 0 }); // Progress tracking
 
   // Helper function to update selected file reference when files array changes
   useEffect(() => {
@@ -307,8 +311,17 @@ const App = () => {
         const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
         const year = yearMatch ? yearMatch[0] : null;
         
-        // Clean the filename and remove the year for the base search term
-        const baseSearchTerm = fileName.replace(/[._-]/g, ' ').replace(/\b(19|20)\d{2}\b/g, '').trim();
+        // Clean the filename while preserving important numbers in titles
+        // Replace separators with spaces
+        let baseSearchTerm = fileName.replace(/[._-]/g, ' ');
+        
+        // Remove the year if found, but preserve other numbers that are part of titles
+        if (year) {
+          baseSearchTerm = baseSearchTerm.replace(new RegExp(`\\b${year}\\b`, 'g'), '');
+        }
+        
+        // Clean up extra spaces and trim
+        baseSearchTerm = baseSearchTerm.replace(/\s+/g, ' ').trim();
         
         // Include year in search term if found
         searchTerm = year ? `${baseSearchTerm} ${year}` : baseSearchTerm;
@@ -545,6 +558,168 @@ const App = () => {
     }
   };
 
+  // Bulk rename functions
+  const handleBulkRenameFiles = async () => {
+    const filesToRename = files.filter(file => 
+      selectedFiles.has(file.path) && 
+      file.movie && 
+      file.filenameInfo && 
+      file.filenameInfo.needs_rename
+    );
+    
+    if (filesToRename.length === 0) {
+      setError('No files selected for bulk rename or no files need renaming');
+      return;
+    }
+    
+    setIsBulkRenaming(true);
+    setBulkRenameProgress({ current: 0, total: filesToRename.length });
+    setError(null);
+    setSuccessMessage('');
+    
+    try {
+      for (let i = 0; i < filesToRename.length; i++) {
+        const file = filesToRename[i];
+        setBulkRenameProgress({ current: i + 1, total: filesToRename.length });
+        
+        try {
+          const response = await api.movies.renameFile(file.path, file.filenameInfo.standard_filename);
+          
+          // Update the file list with the new path and name
+          setFiles(prevFiles => 
+            prevFiles.map(f => 
+              f.path === file.path 
+                ? { 
+                    ...f, 
+                    path: response.new_path,
+                    name: file.filenameInfo.standard_filename,
+                    filenameInfo: undefined // Clear filename info since it's now standard
+                  }
+                : f
+            )
+          );
+          
+          console.log(`Bulk rename: Successfully renamed "${file.name}" to "${file.filenameInfo.standard_filename}"`);
+        } catch (err) {
+          console.error(`Bulk rename error for "${file.name}":`, err);
+          setError(`Failed to rename "${file.name}": ${err.message}`);
+          break; // Stop on first error
+        }
+      }
+      
+      setSuccessMessage(`Successfully renamed ${filesToRename.length} files`);
+      setSelectedFiles(new Set()); // Clear selection
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
+    } catch (err) {
+      setError('Bulk rename failed: ' + err.message);
+      console.error('Bulk rename error:', err);
+    } finally {
+      setIsBulkRenaming(false);
+      setBulkRenameProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleBulkRenameFolders = async () => {
+    const filesToRename = files.filter(file => 
+      selectedFiles.has(file.path) && 
+      file.movie && 
+      file.folderInfo && 
+      file.folderInfo.needs_rename
+    );
+    
+    if (filesToRename.length === 0) {
+      setError('No files selected for bulk folder rename or no folders need renaming');
+      return;
+    }
+    
+    setIsBulkRenaming(true);
+    setBulkRenameProgress({ current: 0, total: filesToRename.length });
+    setError(null);
+    setSuccessMessage('');
+    
+    try {
+      for (let i = 0; i < filesToRename.length; i++) {
+        const file = filesToRename[i];
+        setBulkRenameProgress({ current: i + 1, total: filesToRename.length });
+        
+        try {
+          const response = await api.movies.renameFolder(
+            file.folderInfo.current_folder_path, 
+            file.folderInfo.standard_foldername
+          );
+          
+          // Update all files that were in the renamed folder
+          setFiles(prevFiles => 
+            prevFiles.map(f => {
+              if (f.directory === file.folderInfo.current_folder_path || 
+                  f.path.startsWith(file.folderInfo.current_folder_path + '/')) {
+                const newPath = f.path.replace(file.folderInfo.current_folder_path, response.new_path);
+                const newDirectory = f.directory.replace(file.folderInfo.current_folder_path, response.new_path);
+                
+                return {
+                  ...f,
+                  path: newPath,
+                  directory: newDirectory,
+                  folderInfo: f.folderInfo ? undefined : f.folderInfo // Clear folder info since it's now standard
+                };
+              }
+              return f;
+            })
+          );
+          
+          console.log(`Bulk folder rename: Successfully renamed folder to "${file.folderInfo.standard_foldername}"`);
+        } catch (err) {
+          console.error(`Bulk folder rename error for "${file.name}":`, err);
+          setError(`Failed to rename folder for "${file.name}": ${err.message}`);
+          break; // Stop on first error
+        }
+      }
+      
+      setSuccessMessage(`Successfully renamed ${filesToRename.length} folders`);
+      setSelectedFiles(new Set()); // Clear selection
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
+    } catch (err) {
+      setError('Bulk folder rename failed: ' + err.message);
+      console.error('Bulk folder rename error:', err);
+    } finally {
+      setIsBulkRenaming(false);
+      setBulkRenameProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleSelectAll = () => {
+    const filesNeedingRename = files.filter(file => needsRenaming(file));
+    if (selectedFiles.size === filesNeedingRename.length) {
+      // If all are selected, deselect all
+      setSelectedFiles(new Set());
+    } else {
+      // Select all files that need renaming
+      setSelectedFiles(new Set(filesNeedingRename.map(f => f.path)));
+    }
+  };
+
+  const handleSelectFile = (filePath) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filePath)) {
+        newSet.delete(filePath);
+      } else {
+        newSet.add(filePath);
+      }
+      return newSet;
+    });
+  };
+
 
 
   const handleClearSearchResults = () => {
@@ -576,8 +751,8 @@ const App = () => {
     setError(null);
 
     const unprocessedFiles = files.filter(file => !file.movie);
-    // Dynamic concurrency: more files = higher concurrency, but cap at 15 for stability
-    const CONCURRENCY_LIMIT = Math.min(15, Math.max(8, Math.ceil(unprocessedFiles.length / 3)));
+    // Use user-configurable worker count, clamped between 1 and 15
+    const CONCURRENCY_LIMIT = Math.max(1, Math.min(15, workerCount));
     setCurrentConcurrencyLimit(CONCURRENCY_LIMIT);
     
     // Function to process a single file
@@ -610,8 +785,21 @@ const App = () => {
           const bestMatch = results[0]; // Use the first (best) result
           console.log(`Auto-processing: Found match for "${file.name}" -> "${bestMatch.title}"`);
           
-          // Assign the movie
+          // Assign the movie and wait for database confirmation
           const assignResponse = await api.movies.assign(file.path, bestMatch);
+          
+          // Verify the assignment was actually saved to database
+          if (!assignResponse || assignResponse.error) {
+            throw new Error(`Database assignment failed: ${assignResponse?.error || 'Unknown error'}`);
+          }
+          
+          // Double-check the assignment exists in the database
+          const verificationResponse = await api.movies.verifyAssignment(file.path);
+          if (!verificationResponse.exists) {
+            throw new Error('Assignment verification failed - assignment not found in database');
+          }
+          
+          console.log(`✅ Database confirmed: "${bestMatch.title}" assigned to "${file.name}"`);
           
           // Keep track of current file path (it might change during renaming)
           let currentFilePath = file.path;
@@ -682,14 +870,16 @@ const App = () => {
           setAutoProcessResults(prev => [...prev, {
             file: file.name,
             movie: bestMatch.title,
-            status: 'success'
+            status: 'success',
+            message: '✅ ASSIGNED & CONFIRMED IN DATABASE'
           }]);
         } else {
           console.log(`Auto-processing: No match found for "${file.name}" (search term: "${searchTerm}")`);
           setAutoProcessResults(prev => [...prev, {
             file: file.name,
             movie: null,
-            status: 'no_match'
+            status: 'no_match',
+            message: '⚠ No match found in TMDB'
           }]);
         }
         
@@ -699,12 +889,13 @@ const App = () => {
           file: file.name,
           movie: null,
           status: 'error',
-          error: err.message
+          error: err.message,
+          message: `✗ Error: ${err.message}`
         }]);
         
         // If this is a critical error that might affect the entire process, stop
-        if (err.message.includes('network') || err.message.includes('timeout')) {
-          setError(`Auto-processing stopped due to network error: ${err.message}`);
+        if (err.message.includes('network') || err.message.includes('timeout') || err.message.includes('Database assignment failed')) {
+          setError(`Auto-processing stopped due to critical error: ${err.message}`);
           processingRef.current = false;
         }
       } finally {
@@ -862,23 +1053,40 @@ const App = () => {
                         </label>
                       </div>
                       
-                      <button 
-                        className={`auto-process-btn ${isAutoProcessing ? 'stop' : 'play'}`}
-                        onClick={handleAutoProcess}
-                        disabled={files.filter(f => !f.movie).length === 0}
-                      >
-                        {isAutoProcessing ? (
-                          <>
-                            <span className="stop-icon">⏹</span>
-                            Stop Auto-Processing
-                          </>
-                        ) : (
-                          <>
-                            <span className="play-icon">▶</span>
-                            Auto-Process Files ({files.filter(f => !f.movie).length} remaining)
-                          </>
-                        )}
-                      </button>
+                      <div className="auto-process-controls">
+                        <div className="worker-count-control">
+                          <label htmlFor="worker-count">Parallel Workers:</label>
+                          <input
+                            id="worker-count"
+                            type="number"
+                            min="1"
+                            max="15"
+                            value={workerCount}
+                            onChange={(e) => setWorkerCount(Math.max(1, Math.min(15, parseInt(e.target.value) || 8)))}
+                            disabled={isAutoProcessing}
+                            className="worker-count-input"
+                          />
+                          <span className="worker-count-hint">(1-15)</span>
+                        </div>
+                        
+                        <button 
+                          className={`auto-process-btn ${isAutoProcessing ? 'stop' : 'play'}`}
+                          onClick={handleAutoProcess}
+                          disabled={files.filter(f => !f.movie).length === 0}
+                        >
+                          {isAutoProcessing ? (
+                            <>
+                              <span className="stop-icon">⏹</span>
+                              Stop Auto-Processing
+                            </>
+                          ) : (
+                            <>
+                              <span className="play-icon">▶</span>
+                              Auto-Process Files ({files.filter(f => !f.movie).length} remaining)
+                            </>
+                          )}
+                        </button>
+                      </div>
                       
                       {isAutoProcessing && (
                         <div className="processing-status">
@@ -895,6 +1103,54 @@ const App = () => {
                                 }}
                               ></div>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Bulk Rename Controls */}
+                    <div className="bulk-rename-controls">
+                      <div className="bulk-selection-info">
+                        <span>Selected: {selectedFiles.size} files</span>
+                        <span>Files needing rename: {files.filter(f => needsRenaming(f)).length}</span>
+                      </div>
+                      
+                      <div className="bulk-actions">
+                        <button 
+                          className="select-all-btn"
+                          onClick={handleSelectAll}
+                          disabled={isBulkRenaming}
+                        >
+                          {selectedFiles.size === files.filter(f => needsRenaming(f)).length ? 'Deselect All' : 'Select All'}
+                        </button>
+                        
+                        <button 
+                          className="bulk-rename-files-btn"
+                          onClick={handleBulkRenameFiles}
+                          disabled={isBulkRenaming || selectedFiles.size === 0}
+                        >
+                          {isBulkRenaming ? 'Renaming Files...' : `Bulk Rename Files (${selectedFiles.size})`}
+                        </button>
+                        
+                        <button 
+                          className="bulk-rename-folders-btn"
+                          onClick={handleBulkRenameFolders}
+                          disabled={isBulkRenaming || selectedFiles.size === 0}
+                        >
+                          {isBulkRenaming ? 'Renaming Folders...' : `Bulk Rename Folders (${selectedFiles.size})`}
+                        </button>
+                      </div>
+                      
+                      {isBulkRenaming && (
+                        <div className="bulk-rename-progress">
+                          <span>🔄 Bulk Renaming: {bulkRenameProgress.current} / {bulkRenameProgress.total}</span>
+                          <div className="progress-bar">
+                            <div 
+                              className="progress-fill" 
+                              style={{
+                                width: `${(bulkRenameProgress.current / Math.max(bulkRenameProgress.total, 1)) * 100}%`
+                              }}
+                            ></div>
                           </div>
                         </div>
                       )}
@@ -923,9 +1179,11 @@ const App = () => {
                             <div key={index} className={`result-item ${result.status}`}>
                               <span className="result-file">{result.file}</span>
                               <span className="result-status">
-                                {result.status === 'success' && `✓ Assigned: ${result.movie}`}
-                                {result.status === 'no_match' && '⚠ No match found'}
-                                {result.status === 'error' && `✗ Error: ${result.error}`}
+                                {result.message || (
+                                  result.status === 'success' ? `✓ Assigned: ${result.movie}` :
+                                  result.status === 'no_match' ? '⚠ No match found' :
+                                  `✗ Error: ${result.error}`
+                                )}
                               </span>
                             </div>
                           ))}
@@ -968,6 +1226,8 @@ const App = () => {
                     needsRenaming={needsRenaming}
                     alternateMovieName={alternateMovieName}
                     setAlternateMovieName={setAlternateMovieName}
+                    selectedFiles={selectedFiles}
+                    onSelectFile={handleSelectFile}
                   />
                   </>
                 )}
@@ -1150,7 +1410,7 @@ const App = () => {
 };
 
 // Files Table Component
-const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly, showNonStandardOnly, needsRenaming, alternateMovieName, setAlternateMovieName }) => {
+const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAcceptMovie, onRemoveMovieAssignment, onRenameFile, onRenameFolder, onDeleteFile, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, renamingFileId, renamingFolderId, deletingFileId, onClearSearchResults, isAutoProcessing, currentProcessingIndex, fetchingFiles, processingFiles, completedFiles, showUnassignedOnly, showNonStandardOnly, needsRenaming, alternateMovieName, setAlternateMovieName, selectedFiles, onSelectFile }) => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -1183,6 +1443,15 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
       <table className="files-table">
         <thead>
           <tr>
+            <th>
+              <input
+                type="checkbox"
+                checked={selectedFiles.size === files.filter(f => needsRenaming(f)).length && selectedFiles.size > 0}
+                onChange={() => {}} // Handled by Select All button
+                disabled={isAutoProcessing}
+                className="select-all-checkbox"
+              />
+            </th>
             <th>File Name</th>
             <th>Size</th>
             <th>Modified</th>
@@ -1201,6 +1470,18 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
                 className={`file-row ${selectedFile === file ? 'selected' : ''} ${deletingFileId === file.path ? 'deleting' : ''} ${isCurrentlyProcessing ? 'processing' : ''} ${isCompleted ? 'completed' : ''}`}
                 onClick={() => handleRowClick(file)}
               >
+                <td className="checkbox-cell">
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.path)}
+                    onChange={(e) => {
+                      e.stopPropagation(); // Prevent row click
+                      onSelectFile(file.path);
+                    }}
+                    disabled={isAutoProcessing || !needsRenaming(file)}
+                    className="file-checkbox"
+                  />
+                </td>
                 <td className="file-name-cell">{file.name}</td>
                 <td>{formatFileSize(file.size)}</td>
                 <td>{formatDate(file.modified)}</td>
@@ -1223,7 +1504,7 @@ const FilesTable = ({ files, selectedFile, setSelectedFile, onFindMovie, onAccep
               </tr>
               {selectedFile === file && (
                 <tr className={`action-row ${deletingFileId === file.path ? 'deleting' : ''}`}>
-                  <td colSpan="5">
+                  <td colSpan="6">
                     <div className="action-buttons">
 
                       <div className="button-row">

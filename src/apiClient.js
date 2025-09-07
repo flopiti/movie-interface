@@ -107,6 +107,9 @@ export const api = {
       movie: movieData 
     }),
     
+    // Verify if a movie assignment exists for a file
+    verifyAssignment: (filePath) => api.get('/verify-assignment', { file_path: filePath }),
+    
     // Remove movie assignment from a file
     removeAssignment: (filePath) => api.delete('/remove-movie-assignment', { 
       file_path: filePath 
@@ -173,6 +176,11 @@ export const api = {
   orphanedFiles: {
     // Find files that are assigned to movies but don't exist
     find: () => api.get('/orphaned-files'),
+    
+    // Move an orphaned file to its own folder
+    moveToFolder: (filePath) => api.post('/move-to-folder', { 
+      file_path: filePath 
+    }),
   },
 
   // Firebase cleanup API calls

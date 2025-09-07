@@ -488,6 +488,59 @@
   opacity: 0.6;
 }
 
+.auto-process-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.worker-count-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.worker-count-control label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.worker-count-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  background-color: white;
+  transition: border-color 0.3s ease;
+}
+
+.worker-count-input:focus {
+  outline: none;
+  border-color: #48bb78;
+  box-shadow: 0 0 0 2px rgba(72, 187, 120, 0.2);
+}
+
+.worker-count-input:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.worker-count-hint {
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
 .play-icon, .stop-icon {
   font-size: 14px;
 }
@@ -543,6 +596,126 @@
   100% {
     background: linear-gradient(90deg, #48bb78, #38a169);
   }
+}
+
+/* Bulk Rename Controls */
+.bulk-rename-controls {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.bulk-selection-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.select-all-btn {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.select-all-btn:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.select-all-btn:disabled {
+  background: #adb5bd;
+  cursor: not-allowed;
+}
+
+.bulk-rename-files-btn {
+  padding: 10px 20px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.bulk-rename-files-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.bulk-rename-files-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.bulk-rename-folders-btn {
+  padding: 10px 20px;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.bulk-rename-folders-btn:hover:not(:disabled) {
+  background: #138496;
+}
+
+.bulk-rename-folders-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.bulk-rename-progress {
+  margin-top: 15px;
+  padding: 10px;
+  background: #e9ecef;
+  border-radius: 4px;
+}
+
+.bulk-rename-progress span {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Checkbox Styles */
+.checkbox-cell {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.select-all-checkbox,
+.file-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.select-all-checkbox:disabled,
+.file-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* Files Table */
