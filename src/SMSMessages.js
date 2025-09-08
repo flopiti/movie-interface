@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './apiClient';
+import SMSReplyManager from './SMSReplyManager';
 import './SMSMessages.css';
 
 const SMSMessages = () => {
@@ -12,6 +13,7 @@ const SMSMessages = () => {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState('messages');
 
   // Load SMS status and messages on component mount
   useEffect(() => {
@@ -132,7 +134,7 @@ const SMSMessages = () => {
   return (
     <div className="sms-container">
       <div className="sms-header">
-        <h2>SMS Messages</h2>
+        <h2>SMS Management</h2>
         <div className="sms-status">
           {status && (
             <div className={`status-indicator ${status.configured ? 'configured' : 'not-configured'}`}>
@@ -143,24 +145,44 @@ const SMSMessages = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="sms-error">
-          <p>Error: {error}</p>
-          <button onClick={loadSMSData} className="retry-button">
-            Retry
-          </button>
-        </div>
+      {/* Tab Navigation */}
+      <div className="sms-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          Messages
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'replies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('replies')}
+        >
+          Reply Management
+        </button>
+      </div>
+
+      {activeTab === 'messages' && (
+        <>
+          {error && (
+            <div className="sms-error">
+              <p>Error: {error}</p>
+              <button onClick={loadSMSData} className="retry-button">
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!status?.configured && (
+            <div className="sms-warning">
+              <p>⚠️ Twilio is not configured. Please add your Twilio credentials to the environment file.</p>
+              <p>Required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER</p>
+            </div>
+          )}
+        </>
       )}
 
-      {!status?.configured && (
-        <div className="sms-warning">
-          <p>⚠️ Twilio is not configured. Please add your Twilio credentials to the environment file.</p>
-          <p>Required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER</p>
-        </div>
-      )}
-
-      {/* Send SMS Form */}
-      {status?.configured && (
+          {/* Send SMS Form */}
+          {status?.configured && (
         <div className="sms-send-section">
           <h3>Send SMS</h3>
           <form onSubmit={handleSendSMS} className="sms-form">
@@ -204,11 +226,11 @@ const SMSMessages = () => {
               <p>✅ SMS sent successfully!</p>
             </div>
           )}
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* Messages List */}
-      <div className="sms-messages-section">
+          {/* Messages List */}
+          <div className="sms-messages-section">
         <div className="messages-header">
           <h3>Recent Messages ({messages.length})</h3>
           <button onClick={loadMessages} className="refresh-button">
@@ -245,9 +267,15 @@ const SMSMessages = () => {
                 )}
               </div>
             ))}
+            </div>
+          )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {activeTab === 'replies' && (
+        <SMSReplyManager />
+      )}
     </div>
   );
 };

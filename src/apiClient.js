@@ -255,6 +255,30 @@ export const api = {
     
     // Send an SMS message
     send: (to, message) => api.post('/api/sms/send', { to, message }),
+    
+    // Reply templates management
+    replyTemplates: {
+      // Get all reply templates
+      getAll: () => api.get('/api/sms/reply-templates'),
+      
+      // Create a new reply template
+      create: (templateData) => api.post('/api/sms/reply-templates', templateData),
+      
+      // Update an existing reply template
+      update: (templateId, templateData) => api.put(`/api/sms/reply-templates/${templateId}`, templateData),
+      
+      // Delete a reply template
+      delete: (templateId) => api.delete(`/api/sms/reply-templates/${templateId}`),
+    },
+    
+    // Reply settings management
+    replySettings: {
+      // Get reply settings
+      get: () => api.get('/api/sms/reply-settings'),
+      
+      // Update reply settings
+      update: (settings) => api.put('/api/sms/reply-settings', settings),
+    },
   },
 
 
