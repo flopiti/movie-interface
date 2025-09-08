@@ -7,6 +7,7 @@ const App = () => {
   const [files, setFiles] = useState([]);
   const [moviePaths, setMoviePaths] = useState([]);
   const [mediaPaths, setMediaPaths] = useState([]);
+  const [downloadPaths, setDownloadPaths] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingFiles, setFetchingFiles] = useState(false); // Separate state for file fetching during autoprocess
@@ -14,7 +15,8 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newPath, setNewPath] = useState('');
   const [newMediaPath, setNewMediaPath] = useState('');
-  const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'media-paths', 'search'
+  const [newDownloadPath, setNewDownloadPath] = useState('');
+  const [activeTab, setActiveTab] = useState('files'); // 'files', 'paths', 'media-paths', 'download-paths', 'search'
   const [selectedFile, setSelectedFile] = useState(null);
   const [movieSearchResults, setMovieSearchResults] = useState([]);
   const [isSearchingMovie, setIsSearchingMovie] = useState(false);
@@ -43,6 +45,9 @@ const App = () => {
   const [selectedFiles, setSelectedFiles] = useState(new Set()); // State for bulk selection
   const [isBulkRenaming, setIsBulkRenaming] = useState(false); // State for bulk rename operation
   const [bulkRenameProgress, setBulkRenameProgress] = useState({ current: 0, total: 0 }); // Progress tracking
+  const [selectedDownloadPath, setSelectedDownloadPath] = useState(null);
+  const [downloadPathContents, setDownloadPathContents] = useState(null);
+  const [loadingDownloadContents, setLoadingDownloadContents] = useState(false);
 
   // Helper function to update selected file reference when files array changes
   useEffect(() => {
@@ -68,6 +73,7 @@ const App = () => {
     fetchFiles();
     fetchMoviePaths();
     fetchMediaPaths();
+    fetchDownloadPaths();
     fetchDuplicates();
     fetchOrphanedFiles();
   }, []);
@@ -215,6 +221,15 @@ const App = () => {
     }
   };
 
+  const fetchDownloadPaths = async () => {
+    try {
+      const data = await api.downloadPaths.getAll();
+      setDownloadPaths(data.download_paths || []);
+    } catch (err) {
+      console.error('Error fetching download paths:', err);
+    }
+  };
+
   const fetchDuplicates = async () => {
     setLoadingDuplicates(true);
     try {
@@ -357,12 +372,65 @@ const App = () => {
     }
   };
 
+  const handleAddDownloadPath = async (e) => {
+    e.preventDefault();
+    if (!newDownloadPath.trim()) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      await api.downloadPaths.add(newDownloadPath.trim());
+      setNewDownloadPath('');
+      await fetchDownloadPaths();
+    } catch (err) {
+      setError('Failed to add download path: ' + err.message);
+      console.error('Error adding download path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveDownloadPath = async (path) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.downloadPaths.remove(path);
+      await fetchDownloadPaths();
+      // Clear contents if this was the selected path
+      if (selectedDownloadPath === path) {
+        setSelectedDownloadPath(null);
+        setDownloadPathContents(null);
+      }
+    } catch (err) {
+      setError('Failed to remove download path: ' + err.message);
+      console.error('Error removing download path:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDownloadPathContents = async (path) => {
+    setSelectedDownloadPath(path);
+    setLoadingDownloadContents(true);
+    setError(null);
+    try {
+      const contents = await api.downloadPaths.getContents(path);
+      setDownloadPathContents(contents);
+    } catch (err) {
+      setError('Failed to load download path contents: ' + err.message);
+      console.error('Error loading download path contents:', err);
+    } finally {
+      setLoadingDownloadContents(false);
+    }
+  };
+
   const handleRefresh = () => {
     setSearchQuery('');
     setSearchResults([]);
     fetchFiles();
     fetchMoviePaths();
     fetchMediaPaths();
+    fetchDownloadPaths();
     fetchDuplicates();
     fetchOrphanedFiles();
   };
@@ -1059,6 +1127,12 @@ const App = () => {
             Media Paths ({mediaPaths.length})
           </button>
           <button 
+            className={activeTab === 'download-paths' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('download-paths')}
+          >
+            Download Paths ({downloadPaths.length})
+          </button>
+          <button 
             className={activeTab === 'duplicates' ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab('duplicates')}
           >
@@ -1397,6 +1471,58 @@ const App = () => {
                       />
                     ))}
                   </div>
+                )}
+              </section>
+            )}
+
+            {/* Download Paths Tab */}
+            {activeTab === 'download-paths' && (
+              <section className="download-paths-section">
+                <h2>Download Paths</h2>
+                
+                {/* Add Download Path Form */}
+                <form onSubmit={handleAddDownloadPath} className="add-path-form">
+                  <input
+                    type="text"
+                    placeholder="Enter download directory path..."
+                    value={newDownloadPath}
+                    onChange={(e) => setNewDownloadPath(e.target.value)}
+                    className="path-input"
+                  />
+                  <button type="submit" className="add-button">
+                    Add Download Path
+                  </button>
+                </form>
+
+                {/* Download Paths List */}
+                {downloadPaths.length === 0 ? (
+                  <p className="no-paths">No download paths configured</p>
+                ) : (
+                  <div className="download-paths-list">
+                    {downloadPaths.map((path, index) => (
+                      <DownloadPathCard 
+                        key={index} 
+                        path={path}
+                        onRemove={handleRemoveDownloadPath}
+                        onViewContents={handleViewDownloadPathContents}
+                        isSelected={selectedDownloadPath === path}
+                        loading={loading}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Download Path Contents */}
+                {selectedDownloadPath && downloadPathContents && (
+                  <DownloadPathContents 
+                    path={selectedDownloadPath}
+                    contents={downloadPathContents}
+                    loading={loadingDownloadContents}
+                    onClose={() => {
+                      setSelectedDownloadPath(null);
+                      setDownloadPathContents(null);
+                    }}
+                  />
                 )}
               </section>
             )}
@@ -2082,6 +2208,150 @@ const MediaPathCard = ({ pathInfo, onRemove, onRefreshSpace, loading }) => {
               <span className="detail-value">{formatDate(pathInfo.last_updated)}</span>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Download Path Card Component
+const DownloadPathCard = ({ path, onRemove, onViewContents, isSelected, loading }) => {
+  return (
+    <div className={`download-path-card ${isSelected ? 'selected' : ''}`}>
+      <div className="download-path-header">
+        <div className="download-path-info">
+          <h3 className="download-path-title">{path}</h3>
+          <div className="download-path-status">
+            <span className="status-exists">✓ Path configured</span>
+          </div>
+        </div>
+        <div className="download-path-actions">
+          <button 
+            className="view-contents-btn"
+            onClick={() => onViewContents(path)}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'View Contents'}
+          </button>
+          <button 
+            className="remove-download-path-btn"
+            onClick={() => onRemove(path)}
+            disabled={loading}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Download Path Contents Component
+const DownloadPathContents = ({ path, contents, loading, onClose }) => {
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  if (loading) {
+    return (
+      <div className="download-path-contents">
+        <div className="contents-header">
+          <h3>Contents of: {path}</h3>
+          <button className="close-contents-btn" onClick={onClose}>×</button>
+        </div>
+        <div className="loading">
+          <p>Loading contents...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!contents.exists) {
+    return (
+      <div className="download-path-contents">
+        <div className="contents-header">
+          <h3>Contents of: {path}</h3>
+          <button className="close-contents-btn" onClick={onClose}>×</button>
+        </div>
+        <div className="error">
+          <p>Error: {contents.error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="download-path-contents">
+      <div className="contents-header">
+        <h3>Contents of: {path}</h3>
+        <button className="close-contents-btn" onClick={onClose}>×</button>
+      </div>
+      
+      <div className="contents-summary">
+        <div className="summary-item">
+          <span className="summary-label">Folders:</span>
+          <span className="summary-value">{contents.total_folders}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Files:</span>
+          <span className="summary-value">{contents.total_files}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Media Files:</span>
+          <span className="summary-value">{contents.media_files}</span>
+        </div>
+      </div>
+
+      {contents.folders.length > 0 && (
+        <div className="folders-section">
+          <h4>Folders ({contents.folders.length})</h4>
+          <div className="folders-list">
+            {contents.folders.map((folder, index) => (
+              <div key={index} className="folder-item">
+                <div className="folder-info">
+                  <span className="folder-name">📁 {folder.name}</span>
+                  <span className="folder-modified">Modified: {formatDate(folder.modified)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {contents.files.length > 0 && (
+        <div className="files-section">
+          <h4>Files ({contents.files.length})</h4>
+          <div className="files-list">
+            {contents.files.map((file, index) => (
+              <div key={index} className={`file-item ${file.is_media ? 'media-file' : ''}`}>
+                <div className="file-info">
+                  <span className="file-name">
+                    {file.is_media ? '🎬' : '📄'} {file.name}
+                  </span>
+                  <div className="file-details">
+                    <span className="file-size">{formatBytes(file.size)}</span>
+                    <span className="file-modified">Modified: {formatDate(file.modified)}</span>
+                    {file.is_media && <span className="media-badge">Media File</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {contents.folders.length === 0 && contents.files.length === 0 && (
+        <div className="empty-contents">
+          <p>This directory is empty.</p>
         </div>
       )}
     </div>

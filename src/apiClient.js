@@ -108,6 +108,21 @@ export const api = {
     refresh: (path) => api.post(`/media-paths/refresh`, { path }),
   },
 
+  // Download paths management API calls
+  downloadPaths: {
+    // Get all configured download paths
+    getAll: () => api.get('/download-paths'),
+    
+    // Add a new download path
+    add: (path) => api.put('/download-paths', { path }),
+    
+    // Remove a download path
+    remove: (path) => api.delete('/download-paths', { path }),
+    
+    // Get contents of a download path (folders and files)
+    getContents: (path) => api.get('/download-paths/contents', { path }),
+  },
+
   // Movie files API calls
   files: {
     // Get all media files from all configured paths
