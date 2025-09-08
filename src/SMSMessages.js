@@ -63,7 +63,24 @@ const SMSMessages = () => {
       setSendError(null);
       setSendSuccess(false);
 
-      const result = await api.sms.send(sendTo.trim(), sendMessage.trim());
+      // Clean and format phone number
+      let cleanPhoneNumber = sendTo.trim();
+      
+      // Remove all non-digit characters except +
+      cleanPhoneNumber = cleanPhoneNumber.replace(/[^\d+]/g, '');
+      
+      // If it doesn't start with +, add +1 for US numbers
+      if (!cleanPhoneNumber.startsWith('+')) {
+        if (cleanPhoneNumber.length === 10) {
+          cleanPhoneNumber = '+1' + cleanPhoneNumber;
+        } else if (cleanPhoneNumber.length === 11 && cleanPhoneNumber.startsWith('1')) {
+          cleanPhoneNumber = '+' + cleanPhoneNumber;
+        } else {
+          cleanPhoneNumber = '+' + cleanPhoneNumber;
+        }
+      }
+
+      const result = await api.sms.send(cleanPhoneNumber, sendMessage.trim());
       
       if (result.success) {
         setSendSuccess(true);
@@ -154,7 +171,7 @@ const SMSMessages = () => {
                 id="sendTo"
                 value={sendTo}
                 onChange={(e) => setSendTo(e.target.value)}
-                placeholder="+1234567890"
+                placeholder="+1234567890 or (123) 456-7890"
                 disabled={sending}
                 required
               />
