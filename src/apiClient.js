@@ -123,6 +123,26 @@ export const api = {
     getContents: (path) => api.get('/download-paths/contents', { path }),
   },
 
+  // Download files management API calls
+  downloadFiles: {
+    // Get all media files from download paths (flattened, no folders)
+    getAll: () => api.get('/download-files'),
+    
+    // Search for movies using Radarr API
+    searchRadarr: (query) => api.get('/download-files/search-radarr', { q: query }),
+    
+    // Assign a movie to a download file
+    assignMovie: (filePath, movieData) => api.post('/download-files/assign-movie', { 
+      file_path: filePath, 
+      movie: movieData 
+    }),
+    
+    // Remove movie assignment from a download file
+    removeAssignment: (filePath) => api.delete('/download-files/remove-assignment', { 
+      file_path: filePath 
+    }),
+  },
+
   // Movie files API calls
   files: {
     // Get all media files from all configured paths
@@ -197,6 +217,9 @@ export const api = {
   comparison: {
     // Compare Plex movies with assigned movies
     compareMovies: () => api.get('/compare-movies'),
+    
+    // Compare Radarr vs Plex movies
+    compareRadarrPlex: () => api.get('/compare-radarr-plex'),
   },
 
   // Duplicates API calls

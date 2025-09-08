@@ -48,6 +48,10 @@ const App = () => {
   const [selectedDownloadPath, setSelectedDownloadPath] = useState(null);
   const [downloadPathContents, setDownloadPathContents] = useState(null);
   const [loadingDownloadContents, setLoadingDownloadContents] = useState(false);
+  const [downloadFiles, setDownloadFiles] = useState([]);
+  const [loadingDownloadFiles, setLoadingDownloadFiles] = useState(false);
+  const [radarrPlexComparison, setRadarrPlexComparison] = useState(null);
+  const [loadingRadarrPlexComparison, setLoadingRadarrPlexComparison] = useState(false);
 
   // Helper function to update selected file reference when files array changes
   useEffect(() => {
@@ -74,6 +78,7 @@ const App = () => {
     fetchMoviePaths();
     fetchMediaPaths();
     fetchDownloadPaths();
+    fetchDownloadFiles();
     fetchDuplicates();
     fetchOrphanedFiles();
   }, []);
@@ -227,6 +232,33 @@ const App = () => {
       setDownloadPaths(data.download_paths || []);
     } catch (err) {
       console.error('Error fetching download paths:', err);
+    }
+  };
+
+  const fetchDownloadFiles = async () => {
+    setLoadingDownloadFiles(true);
+    try {
+      const data = await api.downloadFiles.getAll();
+      setDownloadFiles(data.files || []);
+    } catch (err) {
+      console.error('Error fetching download files:', err);
+      setError('Failed to fetch download files: ' + err.message);
+    } finally {
+      setLoadingDownloadFiles(false);
+    }
+  };
+
+  const fetchRadarrPlexComparison = async () => {
+    setLoadingRadarrPlexComparison(true);
+    setError(null);
+    try {
+      const data = await api.comparison.compareRadarrPlex();
+      setRadarrPlexComparison(data);
+    } catch (err) {
+      console.error('Error fetching Radarr vs Plex comparison:', err);
+      setError('Failed to fetch Radarr vs Plex comparison: ' + err.message);
+    } finally {
+      setLoadingRadarrPlexComparison(false);
     }
   };
 
@@ -424,6 +456,122 @@ const App = () => {
     }
   };
 
+  const handleSearchRadarrMovie = async (file) => {
+    setIsSearchingMovie(true);
+    setMovieSearchResults([]);
+    setSearchedFile(file);
+    try {
+      // Use alternate movie name if provided, otherwise extract from filename
+      let searchTerm;
+      if (alternateMovieName.trim()) {
+        searchTerm = alternateMovieName.trim();
+      } else {
+        // Extract movie name from filename for search
+        const fileName = file.name.replace(/\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)$/i, '');
+        
+        // Extract year from filename (look for 4-digit year)
+        const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+        const year = yearMatch ? yearMatch[0] : null;
+        
+        // Clean the filename while preserving important numbers in titles
+        // Replace separators with spaces
+        let baseSearchTerm = fileName.replace(/[._-]/g, ' ');
+        
+        // Remove the year if found, but preserve other numbers that are part of titles
+        if (year) {
+          baseSearchTerm = baseSearchTerm.replace(new RegExp(`\\b${year}\\b`, 'g'), '');
+        }
+        
+        // Clean up extra spaces and trim
+        baseSearchTerm = baseSearchTerm.replace(/\s+/g, ' ').trim();
+        
+        // Include year in search term if found
+        searchTerm = year ? `${baseSearchTerm} ${year}` : baseSearchTerm;
+      }
+      
+      const data = await api.downloadFiles.searchRadarr(searchTerm);
+      // Extract results from Radarr response
+      const results = data.movies || [];
+      setMovieSearchResults(results);
+    } catch (err) {
+      setError('Radarr movie search failed: ' + err.message);
+      console.error('Error searching Radarr movies:', err);
+    } finally {
+      setIsSearchingMovie(false);
+    }
+  };
+
+  const handleAcceptRadarrMovie = async (movie) => {
+    if (!selectedFile) return;
+    
+    setAcceptingMovieId(movie.id);
+    setError(null);
+    setSuccessMessage('');
+    
+    try {
+      // Send the assignment to the backend
+      const response = await api.downloadFiles.assignMovie(selectedFile.path, movie);
+      
+      // Update the file with the selected movie information, filename info, and folder info
+      setDownloadFiles(prevFiles => 
+        prevFiles.map(file => 
+          file === selectedFile 
+            ? { 
+                ...file, 
+                movie: movie,
+                filenameInfo: response.filenameInfo,
+                folderInfo: response.folderInfo
+              }
+            : file
+        )
+      );
+      
+      // Show success message
+      setSuccessMessage(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
+      
+      // Clear search results after a short delay to show success
+      setTimeout(() => {
+        setMovieSearchResults([]);
+        setSearchedFile(null);
+        setSuccessMessage('');
+        setAlternateMovieName(''); // Clear alternate movie name when movie is accepted
+      }, 2000);
+      
+      console.log(`Successfully assigned "${movie.title}" to "${selectedFile.name}"`);
+    } catch (err) {
+      setError('Failed to assign movie: ' + err.message);
+      console.error('Error assigning movie:', err);
+    } finally {
+      setAcceptingMovieId(null);
+    }
+  };
+
+  const handleRemoveDownloadFileMovieAssignment = async (file) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Send the removal request to the backend
+      await api.downloadFiles.removeAssignment(file.path);
+      
+      // Update the file to remove the movie assignment
+      setDownloadFiles(prevFiles => 
+        prevFiles.map(f => 
+          f === file 
+            ? { ...f, movie: undefined, filenameInfo: undefined, folderInfo: undefined }
+            : f
+        )
+      );
+      
+      console.log(`Successfully removed movie assignment from "${file.name}"`);
+    } catch (err) {
+      setError('Failed to remove movie assignment: ' + err.message);
+      console.error('Error removing movie assignment:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
     setSearchQuery('');
     setSearchResults([]);
@@ -431,6 +579,7 @@ const App = () => {
     fetchMoviePaths();
     fetchMediaPaths();
     fetchDownloadPaths();
+    fetchDownloadFiles();
     fetchDuplicates();
     fetchOrphanedFiles();
   };
@@ -1133,6 +1282,18 @@ const App = () => {
             Download Paths ({downloadPaths.length})
           </button>
           <button 
+            className={activeTab === 'download-files' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('download-files')}
+          >
+            Download Files ({downloadFiles.length})
+          </button>
+          <button 
+            className={activeTab === 'radarr-plex-comparison' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('radarr-plex-comparison')}
+          >
+            Radarr vs Plex
+          </button>
+          <button 
             className={activeTab === 'duplicates' ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab('duplicates')}
           >
@@ -1522,6 +1683,70 @@ const App = () => {
                       setSelectedDownloadPath(null);
                       setDownloadPathContents(null);
                     }}
+                  />
+                )}
+              </section>
+            )}
+
+            {/* Download Files Tab */}
+            {activeTab === 'download-files' && (
+              <section className="download-files-section">
+                <h2>Download Files ({downloadFiles.length})</h2>
+                
+                {downloadFiles.length === 0 ? (
+                  <p className="no-files">No media files found in download paths. Add download paths first.</p>
+                ) : (
+                  <>
+                    <div className="download-files-controls">
+                      <button 
+                        className="refresh-download-files-btn"
+                        onClick={fetchDownloadFiles}
+                        disabled={loadingDownloadFiles}
+                      >
+                        {loadingDownloadFiles ? 'Loading...' : 'Refresh Download Files'}
+                      </button>
+                    </div>
+                    
+                    <DownloadFilesTable 
+                      files={downloadFiles} 
+                      selectedFile={selectedFile}
+                      setSelectedFile={setSelectedFile}
+                      onSearchRadarrMovie={handleSearchRadarrMovie}
+                      onAcceptRadarrMovie={handleAcceptRadarrMovie}
+                      onRemoveMovieAssignment={handleRemoveDownloadFileMovieAssignment}
+                      movieSearchResults={movieSearchResults}
+                      isSearchingMovie={isSearchingMovie}
+                      searchedFile={searchedFile}
+                      acceptingMovieId={acceptingMovieId}
+                      successMessage={successMessage}
+                      onClearSearchResults={handleClearSearchResults}
+                      alternateMovieName={alternateMovieName}
+                      setAlternateMovieName={setAlternateMovieName}
+                    />
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* Radarr vs Plex Comparison Tab */}
+            {activeTab === 'radarr-plex-comparison' && (
+              <section className="radarr-plex-comparison-section">
+                <h2>Radarr vs Plex Comparison</h2>
+                
+                <div className="comparison-controls">
+                  <button 
+                    className="compare-radarr-plex-btn"
+                    onClick={fetchRadarrPlexComparison}
+                    disabled={loadingRadarrPlexComparison}
+                  >
+                    {loadingRadarrPlexComparison ? 'Comparing...' : 'Compare Radarr vs Plex'}
+                  </button>
+                </div>
+
+                {radarrPlexComparison && (
+                  <RadarrPlexComparisonResults 
+                    comparison={radarrPlexComparison}
+                    loading={loadingRadarrPlexComparison}
                   />
                 )}
               </section>
@@ -2354,6 +2579,316 @@ const DownloadPathContents = ({ path, contents, loading, onClose }) => {
           <p>This directory is empty.</p>
         </div>
       )}
+    </div>
+  );
+};
+
+// Download Files Table Component
+const DownloadFilesTable = ({ files, selectedFile, setSelectedFile, onSearchRadarrMovie, onAcceptRadarrMovie, onRemoveMovieAssignment, movieSearchResults, isSearchingMovie, searchedFile, acceptingMovieId, successMessage, onClearSearchResults, alternateMovieName, setAlternateMovieName }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
+
+  const handleRowClick = (file) => {
+    setSelectedFile(selectedFile === file ? null : file);
+  };
+
+  return (
+    <div className="download-files-table-container">
+      <table className="files-table">
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Size</th>
+            <th>Modified</th>
+            <th>Source Path</th>
+            <th>Movie</th>
+          </tr>
+        </thead>
+        <tbody>
+          {files.map((file, index) => (
+            <React.Fragment key={index}>
+              <tr 
+                className={`file-row ${selectedFile === file ? 'selected' : ''}`}
+                onClick={() => handleRowClick(file)}
+              >
+                <td className="file-name-cell">{file.name}</td>
+                <td>{formatFileSize(file.size)}</td>
+                <td>{formatDate(file.modified)}</td>
+                <td className="directory-cell">{file.source_path}</td>
+                <td className="movie-cell">
+                  {file.movie ? (
+                    <div className="movie-info">
+                      <strong>{file.movie.title}</strong>
+                      {file.movie.year && (
+                        <span className="movie-year"> ({file.movie.year})</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="no-movie">No movie assigned</span>
+                  )}
+                </td>
+              </tr>
+              {selectedFile === file && (
+                <tr className="action-row">
+                  <td colSpan="5">
+                    <div className="action-buttons">
+                      <div className="button-row">
+                        <div className="find-movie-section">
+                          <div className="input-group">
+                            <input
+                              type="text"
+                              placeholder="Enter movie name (e.g., 'Signs of Life 1968')..."
+                              value={alternateMovieName}
+                              onChange={(e) => setAlternateMovieName(e.target.value)}
+                              className="alternate-movie-input"
+                              disabled={isSearchingMovie}
+                            />
+                            <small className="input-hint">Include year for better results</small>
+                          </div>
+                          <button 
+                            className="find-movie-btn"
+                            onClick={() => onSearchRadarrMovie(file)}
+                            disabled={isSearchingMovie}
+                          >
+                            {isSearchingMovie ? 'Searching Radarr...' : 'Search Radarr'}
+                          </button>
+                        </div>
+                        
+                        {file.movie && (
+                          <button 
+                            className="remove-assignment-btn"
+                            onClick={() => onRemoveMovieAssignment(file)}
+                          >
+                            Remove Assignment
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filename Information Display */}
+                      {file.movie && file.filenameInfo && (
+                        <div className="filename-info">
+                          <h4>Filename Information:</h4>
+                          <div className="filename-comparison">
+                            <div className="current-filename">
+                              <strong>Current:</strong> <span className="filename">{file.filenameInfo.current_filename}</span>
+                            </div>
+                            <div className="standard-filename">
+                              <strong>Standard:</strong> <span className="filename">{file.filenameInfo.standard_filename}</span>
+                            </div>
+                            {file.filenameInfo.needs_rename && (
+                              <div className="rename-action">
+                                <span className="needs-rename-badge">⚠️ Filename needs renaming to standard format</span>
+                              </div>
+                            )}
+                            {!file.filenameInfo.needs_rename && (
+                              <div className="filename-status">
+                                <span className="status-good">✓ Filename is already in standard format</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Folder Information Display */}
+                      {file.movie && file.folderInfo && (
+                        <div className="folder-info">
+                          <h4>Folder Information:</h4>
+                          <div className="folder-comparison">
+                            <div className="current-foldername">
+                              <strong>Current:</strong> <span className="foldername">{file.folderInfo.current_foldername}</span>
+                            </div>
+                            <div className="standard-foldername">
+                              <strong>Standard:</strong> <span className="foldername">{file.folderInfo.standard_foldername}</span>
+                            </div>
+                            {file.folderInfo.needs_rename && (
+                              <div className="rename-action">
+                                <span className="needs-rename-badge">⚠️ Folder needs renaming to standard format</span>
+                              </div>
+                            )}
+                            {!file.folderInfo.needs_rename && (
+                              <div className="folder-status">
+                                <span className="status-good">✓ Folder is already in standard format</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {movieSearchResults.length > 0 && searchedFile === file && (
+                        <div className="movie-suggestions">
+                          <h4>Radarr Movie Suggestions:</h4>
+                          {successMessage && (
+                            <div className="success-message">
+                              ✓ {successMessage}
+                            </div>
+                          )}
+                          <div className="suggestions-list">
+                            {movieSearchResults.slice(0, 3).map((movie, idx) => {
+                              const isAccepting = acceptingMovieId === movie.id;
+                              const isDisabled = acceptingMovieId !== null;
+                              
+                              return (
+                                <div key={movie.id || idx} className={`movie-suggestion ${isAccepting ? 'accepting' : ''}`}>
+                                  <div className="movie-suggestion-info">
+                                    <strong>{movie.title}</strong>
+                                    {movie.year && (
+                                      <span className="movie-year"> ({movie.year})</span>
+                                    )}
+                                    {movie.ratings && movie.ratings.imdb && (
+                                      <span className="movie-rating"> - IMDB: {movie.ratings.imdb.value}/10</span>
+                                    )}
+                                  </div>
+                                  <button 
+                                    className="accept-movie-btn"
+                                    onClick={() => onAcceptRadarrMovie(movie)}
+                                    disabled={isDisabled}
+                                  >
+                                    {isAccepting ? 'Accepting...' : 'Accept'}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Radarr vs Plex Comparison Results Component
+const RadarrPlexComparisonResults = ({ comparison, loading }) => {
+  if (loading) {
+    return (
+      <div className="comparison-loading">
+        <p>Comparing Radarr and Plex movies...</p>
+      </div>
+    );
+  }
+
+  if (comparison.error) {
+    return (
+      <div className="comparison-error">
+        <h3>Error</h3>
+        <p>{comparison.error}</p>
+      </div>
+    );
+  }
+
+  const summary = comparison.comparison_summary || {};
+
+  return (
+    <div className="radarr-plex-comparison-results">
+      {/* Summary Statistics */}
+      <div className="comparison-summary">
+        <h3>Comparison Summary</h3>
+        <div className="summary-grid">
+          <div className="summary-item">
+            <span className="summary-label">Total Radarr Movies:</span>
+            <span className="summary-value">{summary.total_radarr_movies || 0}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Total Plex Movies:</span>
+            <span className="summary-value">{summary.total_plex_movies || 0}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Common Movies:</span>
+            <span className="summary-value">{summary.common_movies_count || 0}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Radarr Monitored:</span>
+            <span className="summary-value">{summary.radarr_monitored_count || 0}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Radarr With Files:</span>
+            <span className="summary-value">{summary.radarr_with_files_count || 0}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Movies in Radarr but not in Plex */}
+      <div className="comparison-section">
+        <h3>
+          Movies in Radarr but NOT in Plex 
+          <span className="count-badge">({summary.movies_in_radarr_not_in_plex_count || 0})</span>
+        </h3>
+        {comparison.movies_in_radarr_not_in_plex && comparison.movies_in_radarr_not_in_plex.length > 0 ? (
+          <div className="movies-list">
+            {comparison.movies_in_radarr_not_in_plex.map((movie, index) => (
+              <div key={movie.id || index} className="movie-item radarr-only">
+                <div className="movie-info">
+                  <div className="movie-title">
+                    <strong>{movie.title}</strong>
+                    {movie.year && <span className="movie-year"> ({movie.year})</span>}
+                  </div>
+                  <div className="movie-details">
+                    <span className={`status-badge ${movie.status?.toLowerCase()}`}>
+                      {movie.status || 'Unknown'}
+                    </span>
+                    {movie.monitored && <span className="monitored-badge">Monitored</span>}
+                    {movie.hasFile && <span className="has-file-badge">Has File</span>}
+                  </div>
+                  {movie.rootFolderPath && (
+                    <div className="movie-path">
+                      <small>Path: {movie.rootFolderPath}</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="no-movies">No movies found in Radarr that are missing from Plex.</p>
+        )}
+      </div>
+
+      {/* Movies in Plex but not in Radarr */}
+      <div className="comparison-section">
+        <h3>
+          Movies in Plex but NOT in Radarr 
+          <span className="count-badge">({summary.movies_in_plex_not_in_radarr_count || 0})</span>
+        </h3>
+        {comparison.movies_in_plex_not_in_radarr && comparison.movies_in_plex_not_in_radarr.length > 0 ? (
+          <div className="movies-list">
+            {comparison.movies_in_plex_not_in_radarr.map((movie, index) => (
+              <div key={movie.id || index} className="movie-item plex-only">
+                <div className="movie-info">
+                  <div className="movie-title">
+                    <strong>{movie.title}</strong>
+                    {movie.year && <span className="movie-year"> ({movie.year})</span>}
+                  </div>
+                  <div className="movie-details">
+                    {movie.library && <span className="library-badge">{movie.library}</span>}
+                    {movie.addedAt && (
+                      <span className="added-date">
+                        Added: {new Date(movie.addedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="no-movies">No movies found in Plex that are missing from Radarr.</p>
+        )}
+      </div>
     </div>
   );
 };

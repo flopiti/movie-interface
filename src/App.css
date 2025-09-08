@@ -2518,3 +2518,582 @@
     gap: 5px;
   }
 }
+
+/* Download Files Styles */
+.download-files-section {
+  margin-top: 20px;
+}
+
+.download-files-controls {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.refresh-download-files-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.refresh-download-files-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.refresh-download-files-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.download-files-table-container {
+  margin-top: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.download-files-table-container .files-table {
+  margin: 0;
+  border: none;
+}
+
+.download-files-table-container .files-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 15px 12px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.download-files-table-container .files-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.download-files-table-container .file-row:hover {
+  background: #f8f9fa;
+}
+
+.download-files-table-container .file-row.selected {
+  background: #e3f2fd;
+}
+
+.download-files-table-container .action-row {
+  background: #f8f9fa;
+}
+
+.download-files-table-container .action-buttons {
+  padding: 20px;
+}
+
+.download-files-table-container .button-row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.download-files-table-container .find-movie-section {
+  flex: 1;
+}
+
+.download-files-table-container .input-group {
+  margin-bottom: 8px;
+}
+
+.download-files-table-container .alternate-movie-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.download-files-table-container .alternate-movie-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.download-files-table-container .input-hint {
+  color: #666;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.download-files-table-container .find-movie-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.download-files-table-container .find-movie-btn:hover:not(:disabled) {
+  background: #5a6fd8;
+}
+
+.download-files-table-container .find-movie-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.download-files-table-container .remove-assignment-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.download-files-table-container .remove-assignment-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.download-files-table-container .filename-info,
+.download-files-table-container .folder-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.download-files-table-container .filename-info h4,
+.download-files-table-container .folder-info h4 {
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.download-files-table-container .filename-comparison,
+.download-files-table-container .folder-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.download-files-table-container .current-filename,
+.download-files-table-container .standard-filename,
+.download-files-table-container .current-foldername,
+.download-files-table-container .standard-foldername {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.download-files-table-container .filename,
+.download-files-table-container .foldername {
+  font-family: monospace;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.download-files-table-container .needs-rename-badge {
+  color: #856404;
+  background: #fff3cd;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.download-files-table-container .status-good {
+  color: #155724;
+  background: #d4edda;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.download-files-table-container .movie-suggestions {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.download-files-table-container .movie-suggestions h4 {
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.download-files-table-container .suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.download-files-table-container .movie-suggestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.download-files-table-container .movie-suggestion:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.download-files-table-container .movie-suggestion.accepting {
+  border-color: #28a745;
+  background: #f8fff8;
+}
+
+.download-files-table-container .movie-suggestion-info {
+  flex: 1;
+}
+
+.download-files-table-container .movie-suggestion-info .movie-year {
+  color: #666;
+  font-weight: normal;
+}
+
+.download-files-table-container .movie-suggestion-info .movie-rating {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.download-files-table-container .accept-movie-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.download-files-table-container .accept-movie-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.download-files-table-container .accept-movie-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.download-files-table-container .success-message {
+  color: #155724;
+  background: #d4edda;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+/* Responsive Design for Download Files */
+@media (max-width: 768px) {
+  .download-files-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .download-files-table-container .button-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .download-files-table-container .find-movie-section {
+    width: 100%;
+  }
+  
+  .download-files-table-container .movie-suggestion {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .download-files-table-container .accept-movie-btn {
+    width: 100%;
+  }
+}
+
+/* Radarr vs Plex Comparison Styles */
+.radarr-plex-comparison-section {
+  margin-top: 20px;
+}
+
+.comparison-controls {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.compare-radarr-plex-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.compare-radarr-plex-btn:hover:not(:disabled) {
+  background: #5a6fd8;
+}
+
+.compare-radarr-plex-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.radarr-plex-comparison-results {
+  margin-top: 20px;
+}
+
+.comparison-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.comparison-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #f5c6cb;
+}
+
+.comparison-summary {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  border: 1px solid #e0e0e0;
+}
+
+.comparison-summary h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #555;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.comparison-section {
+  margin-bottom: 30px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comparison-section h3 {
+  margin: 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  color: #333;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.count-badge {
+  background: #667eea;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.movies-list {
+  padding: 20px;
+}
+
+.movie-item {
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.movie-item:hover {
+  border-color: #667eea;
+  background: #f8f9fa;
+}
+
+.movie-item.radarr-only {
+  border-left: 4px solid #dc3545;
+}
+
+.movie-item.plex-only {
+  border-left: 4px solid #28a745;
+}
+
+.movie-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.movie-title {
+  font-size: 1rem;
+  color: #333;
+}
+
+.movie-year {
+  color: #666;
+  font-weight: normal;
+}
+
+.movie-details {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.released {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.tba {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.in-cinemas {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.monitored-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.has-file-badge {
+  background: #d4edda;
+  color: #155724;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.library-badge {
+  background: #f0f4ff;
+  color: #667eea;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.added-date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.movie-path {
+  margin-top: 5px;
+}
+
+.movie-path small {
+  color: #666;
+  font-family: monospace;
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.no-movies {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+}
+
+/* Responsive Design for Radarr vs Plex Comparison */
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .movie-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .comparison-section h3 {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}
