@@ -245,6 +245,18 @@ export const api = {
     cleanup: () => api.post('/firebase-cleanup'),
   },
 
+  // SMS/Twilio API calls
+  sms: {
+    // Get SMS service status
+    getStatus: () => api.get('/api/sms/status'),
+    
+    // Get recent SMS messages
+    getMessages: (limit = 20) => api.get('/api/sms/messages', { limit }),
+    
+    // Send an SMS message
+    send: (to, message) => api.post('/api/sms/send', { to, message }),
+  },
+
 
 };
 

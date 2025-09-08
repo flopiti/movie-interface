@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from './apiClient';
 import MovieComparison from './MovieComparison';
+import SMSMessages from './SMSMessages';
 import './App.css';
 
 const App = () => {
@@ -1317,6 +1318,12 @@ const App = () => {
           >
             Plex Comparison
           </button>
+          <button 
+            className={activeTab === 'sms' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('sms')}
+          >
+            SMS Messages
+          </button>
         </nav>
 
         {/* Loading State */}
@@ -1879,6 +1886,11 @@ const App = () => {
             {/* Comparison Tab */}
             {activeTab === 'comparison' && (
               <MovieComparison />
+            )}
+
+            {/* SMS Messages Tab */}
+            {activeTab === 'sms' && (
+              <SMSMessages />
             )}
           </>
         )}
