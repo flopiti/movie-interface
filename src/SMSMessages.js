@@ -178,97 +178,95 @@ const SMSMessages = () => {
               <p>Required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER</p>
             </div>
           )}
-        </>
-      )}
 
           {/* Send SMS Form */}
           {status?.configured && (
-        <div className="sms-send-section">
-          <h3>Send SMS</h3>
-          <form onSubmit={handleSendSMS} className="sms-form">
-            <div className="form-group">
-              <label htmlFor="sendTo">To (Phone Number):</label>
-              <input
-                type="tel"
-                id="sendTo"
-                value={sendTo}
-                onChange={(e) => setSendTo(e.target.value)}
-                placeholder="+1234567890 or (123) 456-7890"
-                disabled={sending}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="sendMessage">Message:</label>
-              <textarea
-                id="sendMessage"
-                value={sendMessage}
-                onChange={(e) => setSendMessage(e.target.value)}
-                placeholder="Enter your message..."
-                disabled={sending}
-                rows="3"
-                required
-              />
-            </div>
-            <button type="submit" disabled={sending} className="send-button">
-              {sending ? 'Sending...' : 'Send SMS'}
-            </button>
-          </form>
+            <div className="sms-send-section">
+              <h3>Send SMS</h3>
+              <form onSubmit={handleSendSMS} className="sms-form">
+                <div className="form-group">
+                  <label htmlFor="sendTo">To (Phone Number):</label>
+                  <input
+                    type="tel"
+                    id="sendTo"
+                    value={sendTo}
+                    onChange={(e) => setSendTo(e.target.value)}
+                    placeholder="+1234567890 or (123) 456-7890"
+                    disabled={sending}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="sendMessage">Message:</label>
+                  <textarea
+                    id="sendMessage"
+                    value={sendMessage}
+                    onChange={(e) => setSendMessage(e.target.value)}
+                    placeholder="Enter your message..."
+                    disabled={sending}
+                    rows="3"
+                    required
+                  />
+                </div>
+                <button type="submit" disabled={sending} className="send-button">
+                  {sending ? 'Sending...' : 'Send SMS'}
+                </button>
+              </form>
 
-          {sendError && (
-            <div className="send-error">
-              <p>Error: {sendError}</p>
-            </div>
-          )}
+              {sendError && (
+                <div className="send-error">
+                  <p>Error: {sendError}</p>
+                </div>
+              )}
 
-          {sendSuccess && (
-            <div className="send-success">
-              <p>✅ SMS sent successfully!</p>
-            </div>
-          )}
+              {sendSuccess && (
+                <div className="send-success">
+                  <p>✅ SMS sent successfully!</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* Messages List */}
           <div className="sms-messages-section">
-        <div className="messages-header">
-          <h3>Recent Messages ({messages.length})</h3>
-          <button onClick={loadMessages} className="refresh-button">
-            Refresh
-          </button>
-        </div>
+            <div className="messages-header">
+              <h3>Recent Messages ({messages.length})</h3>
+              <button onClick={loadMessages} className="refresh-button">
+                Refresh
+              </button>
+            </div>
 
-        {messages.length === 0 ? (
-          <div className="no-messages">
-            <p>No messages received yet.</p>
-            {status?.configured && (
-              <p>Send a text message to {formatPhoneNumber(status.phone_number)} to test the webhook.</p>
-            )}
-          </div>
-        ) : (
-          <div className="messages-list">
-            {messages.map((message, index) => (
-              <div key={message.MessageSid || index} className="message-item">
-                <div className="message-header">
-                  <span className="message-from">
-                    From: {formatPhoneNumber(message.From)}
-                  </span>
-                  <span className="message-timestamp">
-                    {formatTimestamp(message.timestamp)}
-                  </span>
-                </div>
-                <div className="message-body">
-                  {message.Body}
-                </div>
-                {message.NumMedia && message.NumMedia !== '0' && (
-                  <div className="message-media">
-                    📎 {message.NumMedia} media file(s)
-                  </div>
+            {messages.length === 0 ? (
+              <div className="no-messages">
+                <p>No messages received yet.</p>
+                {status?.configured && (
+                  <p>Send a text message to {formatPhoneNumber(status.phone_number)} to test the webhook.</p>
                 )}
               </div>
-            ))}
-            </div>
-          )}
+            ) : (
+              <div className="messages-list">
+                {messages.map((message, index) => (
+                  <div key={message.MessageSid || index} className="message-item">
+                    <div className="message-header">
+                      <span className="message-from">
+                        From: {formatPhoneNumber(message.From)}
+                      </span>
+                      <span className="message-timestamp">
+                        {formatTimestamp(message.timestamp)}
+                      </span>
+                    </div>
+                    <div className="message-body">
+                      {message.Body}
+                    </div>
+                    {message.NumMedia && message.NumMedia !== '0' && (
+                      <div className="message-media">
+                        📎 {message.NumMedia} media file(s)
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

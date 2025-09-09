@@ -256,6 +256,24 @@ export const api = {
     // Send an SMS message
     send: (to, message) => api.post('/api/sms/send', { to, message }),
     
+    // Webhook management
+    webhook: {
+      // Get current webhook URL from Twilio
+      getUrl: () => api.get('/api/sms/webhook-url'),
+      
+      // Update webhook URL in Twilio
+      updateUrl: (webhookUrl) => api.put('/api/sms/webhook-url', { webhook_url: webhookUrl }),
+    },
+    
+    // Phone number settings management
+    phoneSettings: {
+      // Get all phone number settings from Twilio
+      get: () => api.get('/api/sms/phone-settings'),
+      
+      // Update phone number settings in Twilio
+      update: (settings) => api.put('/api/sms/phone-settings', settings),
+    },
+    
     // Reply templates management
     replyTemplates: {
       // Get all reply templates

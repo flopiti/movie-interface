@@ -6,10 +6,20 @@ const SMSReplyManager = () => {
   const [templates, setTemplates] = useState([]);
   const [settings, setSettings] = useState({
     auto_reply_enabled: false,
-    fallback_message: "Message received: '{message}'",
+    fallback_message: "",
     reply_delay_seconds: 0,
     max_replies_per_day: 10,
     blocked_numbers: []
+  });
+  
+  // Phone settings state
+  const [phoneSettings, setPhoneSettings] = useState({
+    sms_url: '',
+    sms_method: 'POST',
+    voice_url: '',
+    voice_method: 'POST',
+    status_callback: '',
+    status_callback_method: 'POST'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,6 +40,10 @@ const SMSReplyManager = () => {
   const [showSettingsForm, setShowSettingsForm] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ ...settings });
   
+  // Phone settings form state
+  const [showPhoneSettingsForm, setShowPhoneSettingsForm] = useState(false);
+  const [phoneSettingsForm, setPhoneSettingsForm] = useState({ ...phoneSettings });
+  
   // New keyword input
   const [newKeyword, setNewKeyword] = useState('');
 
@@ -42,14 +56,20 @@ const SMSReplyManager = () => {
       setLoading(true);
       setError(null);
       
-      const [templatesResponse, settingsResponse] = await Promise.all([
+      const [templatesResponse, settingsResponse, phoneSettingsResponse] = await Promise.all([
         api.sms.replyTemplates.getAll(),
-        api.sms.replySettings.get()
+        api.sms.replySettings.get(),
+        api.sms.phoneSettings.get()
       ]);
       
       setTemplates(templatesResponse.templates || []);
       setSettings(settingsResponse);
       setSettingsForm(settingsResponse);
+      
+      if (phoneSettingsResponse.success) {
+        setPhoneSettings(phoneSettingsResponse);
+        setPhoneSettingsForm(phoneSettingsResponse);
+      }
     } catch (err) {
       console.error('Error loading SMS reply data:', err);
       setError(err.message);
@@ -128,6 +148,25 @@ const SMSReplyManager = () => {
       setSettings(settingsForm);
       setSuccess('Settings updated successfully!');
       setShowSettingsForm(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdatePhoneSettings = async (e) => {
+    e.preventDefault();
+    try {
+      setError(null);
+      setSuccess(null);
+      
+      const result = await api.sms.phoneSettings.update(phoneSettingsForm);
+      if (result.success) {
+        setPhoneSettings(phoneSettingsForm);
+        setSuccess('Phone settings updated successfully in Twilio!');
+        setShowPhoneSettingsForm(false);
+      } else {
+        setError(result.error || 'Failed to update phone settings');
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -214,6 +253,12 @@ const SMSReplyManager = () => {
           >
             Settings
           </button>
+          <button 
+            className="btn btn-info"
+            onClick={() => setShowPhoneSettingsForm(true)}
+          >
+            Phone Settings
+          </button>
         </div>
       </div>
 
@@ -250,6 +295,29 @@ const SMSReplyManager = () => {
           <div className="setting-item">
             <label>Blocked Numbers:</label>
             <span>{settings.blocked_numbers.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Phone Settings Summary */}
+      <div className="settings-summary">
+        <h3>Twilio Phone Settings</h3>
+        <div className="settings-grid">
+          <div className="setting-item">
+            <label>SMS Webhook URL:</label>
+            <span>{phoneSettings.sms_url || 'Not set'}</span>
+          </div>
+          <div className="setting-item">
+            <label>SMS Method:</label>
+            <span>{phoneSettings.sms_method}</span>
+          </div>
+          <div className="setting-item">
+            <label>Voice URL:</label>
+            <span>{phoneSettings.voice_url || 'Not set'}</span>
+          </div>
+          <div className="setting-item">
+            <label>Voice Method:</label>
+            <span>{phoneSettings.voice_method}</span>
           </div>
         </div>
       </div>
@@ -447,8 +515,11 @@ const SMSReplyManager = () => {
                   value={settingsForm.fallback_message}
                   onChange={(e) => setSettingsForm({...settingsForm, fallback_message: e.target.value})}
                   rows="3"
-                  placeholder="Message to send when no template matches"
+                  placeholder="Thanks for your message! I received: '{message}' from {sender} at {timestamp}. Configure your number in the system to get personalized responses."
                 />
+                <small className="help-text">
+                  Available placeholders: {'{sender}'}, {'{message}'}, {'{timestamp}'}, {'{phone_number}'}
+                </small>
               </div>
               
               <div className="form-group">
@@ -496,6 +567,107 @@ const SMSReplyManager = () => {
                   type="button" 
                   className="btn btn-secondary"
                   onClick={() => setShowSettingsForm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Settings Form Modal */}
+      {showPhoneSettingsForm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Twilio Phone Settings</h3>
+              <button 
+                className="btn btn-sm btn-secondary"
+                onClick={() => setShowPhoneSettingsForm(false)}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleUpdatePhoneSettings}>
+              <div className="form-group">
+                <label>SMS Webhook URL</label>
+                <input
+                  type="url"
+                  value={phoneSettingsForm.sms_url}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, sms_url: e.target.value})}
+                  placeholder="https://your-server.com/api/sms/webhook"
+                />
+                <small className="help-text">
+                  URL where Twilio sends incoming SMS messages
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label>SMS Method</label>
+                <select
+                  value={phoneSettingsForm.sms_method}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, sms_method: e.target.value})}
+                >
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>Voice URL</label>
+                <input
+                  type="url"
+                  value={phoneSettingsForm.voice_url}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, voice_url: e.target.value})}
+                  placeholder="https://your-server.com/api/voice/webhook"
+                />
+                <small className="help-text">
+                  URL where Twilio sends incoming voice calls
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label>Voice Method</label>
+                <select
+                  value={phoneSettingsForm.voice_method}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, voice_method: e.target.value})}
+                >
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>Status Callback URL</label>
+                <input
+                  type="url"
+                  value={phoneSettingsForm.status_callback}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, status_callback: e.target.value})}
+                  placeholder="https://your-server.com/api/sms/status-callback"
+                />
+                <small className="help-text">
+                  URL where Twilio sends status updates
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label>Status Callback Method</label>
+                <select
+                  value={phoneSettingsForm.status_callback_method}
+                  onChange={(e) => setPhoneSettingsForm({...phoneSettingsForm, status_callback_method: e.target.value})}
+                >
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                </select>
+              </div>
+              
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">Update Phone Settings</button>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  onClick={() => setShowPhoneSettingsForm(false)}
                 >
                   Cancel
                 </button>
