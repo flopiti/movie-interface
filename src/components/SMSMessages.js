@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/apiClient';
-import SMSReplyManager from './SMSReplyManager';
 import SMSConversations from './SMSConversations';
+import SMSReplyManager from './SMSReplyManager';
 import '../styles/SMSMessages.css';
 
 const SMSMessages = () => {

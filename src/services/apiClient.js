@@ -277,21 +277,6 @@ export const api = {
       update: (settings) => api.put('/api/sms/phone-settings', settings),
     },
     
-    // Reply templates management
-    replyTemplates: {
-      // Get all reply templates
-      getAll: () => api.get('/api/sms/reply-templates'),
-      
-      // Create a new reply template
-      create: (templateData) => api.post('/api/sms/reply-templates', templateData),
-      
-      // Update an existing reply template
-      update: (templateId, templateData) => api.put(`/api/sms/reply-templates/${templateId}`, templateData),
-      
-      // Delete a reply template
-      delete: (templateId) => api.delete(`/api/sms/reply-templates/${templateId}`),
-    },
-    
     // Reply settings management
     replySettings: {
       // Get reply settings
