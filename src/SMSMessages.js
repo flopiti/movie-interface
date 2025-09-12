@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './apiClient';
 import SMSReplyManager from './SMSReplyManager';
+import SMSConversations from './SMSConversations';
 import './SMSMessages.css';
 
 const SMSMessages = () => {
@@ -13,7 +14,7 @@ const SMSMessages = () => {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
   const [sendSuccess, setSendSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState('messages');
+  const [activeTab, setActiveTab] = useState('conversations');
 
   // Load SMS status and messages on component mount
   useEffect(() => {
@@ -148,6 +149,12 @@ const SMSMessages = () => {
       {/* Tab Navigation */}
       <div className="sms-tabs">
         <button 
+          className={`tab-button ${activeTab === 'conversations' ? 'active' : ''}`}
+          onClick={() => setActiveTab('conversations')}
+        >
+          Conversations
+        </button>
+        <button 
           className={`tab-button ${activeTab === 'messages' ? 'active' : ''}`}
           onClick={() => setActiveTab('messages')}
         >
@@ -160,6 +167,10 @@ const SMSMessages = () => {
           Reply Management
         </button>
       </div>
+
+      {activeTab === 'conversations' && (
+        <SMSConversations />
+      )}
 
       {activeTab === 'messages' && (
         <>

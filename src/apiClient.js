@@ -253,6 +253,9 @@ export const api = {
     // Get recent SMS messages
     getMessages: (limit = 20) => api.get('/api/sms/messages', { limit }),
     
+    // Get SMS conversations grouped by phone number
+    getConversations: (limit = 100) => api.get('/api/sms/conversations', { limit }),
+    
     // Send an SMS message
     send: (to, message) => api.post('/api/sms/send', { to, message }),
     
