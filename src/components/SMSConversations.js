@@ -14,6 +14,8 @@ const SMSConversations = () => {
   const [sendSuccess, setSendSuccess] = useState(false);
   const messagesEndRef = useRef(null);
   const [previousMessageCount, setPreviousMessageCount] = useState(0);
+  const [deletingConversation, setDeletingConversation] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Load conversations on component mount
   useEffect(() => {
@@ -93,6 +95,37 @@ const SMSConversations = () => {
       setSendError(err.message);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteConversation = async (phoneNumber) => {
+    if (!phoneNumber) {
+      setDeleteError('Phone number is required');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete the conversation with ${formatPhoneNumber(phoneNumber)}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingConversation(phoneNumber);
+      setDeleteError(null);
+
+      await api.sms.deleteConversation(phoneNumber);
+      
+      // If the deleted conversation was selected, clear selection
+      if (selectedConversation?.phone_number === phoneNumber) {
+        setSelectedConversation(null);
+      }
+      
+      // Refresh conversations to remove the deleted one
+      await loadConversations(false);
+      
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeletingConversation(null);
     }
   };
 
@@ -180,6 +213,15 @@ const SMSConversations = () => {
         </div>
       )}
 
+      {deleteError && (
+        <div className="conversations-error">
+          <p>Delete Error: {deleteError}</p>
+          <button onClick={() => setDeleteError(null)} className="retry-button">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {!status?.configured && (
         <div className="conversations-warning">
           <p>⚠️ Twilio is not configured. Please add your Twilio credentials to the environment file.</p>
@@ -221,9 +263,22 @@ const SMSConversations = () => {
                       <span className="conversation-name">
                         {formatPhoneNumber(conversation.phone_number)}
                       </span>
-                      <span className="conversation-time">
-                        {formatConversationTime(conversation.last_message_time)}
-                      </span>
+                      <div className="conversation-actions">
+                        <span className="conversation-time">
+                          {formatConversationTime(conversation.last_message_time)}
+                        </span>
+                        <button
+                          className="delete-conversation-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conversation.phone_number);
+                          }}
+                          disabled={deletingConversation === conversation.phone_number}
+                          title="Delete conversation"
+                        >
+                          {deletingConversation === conversation.phone_number ? '...' : '🗑️'}
+                        </button>
+                      </div>
                     </div>
                     <div className="conversation-preview">
                       <span className={`conversation-message ${conversation.last_message?.is_from_us ? 'from-us' : 'from-them'}`}>
