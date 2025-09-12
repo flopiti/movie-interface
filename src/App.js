@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from './services/apiClient';
 import MovieComparison from './components/MovieComparison';
 import SMSMessages from './components/SMSMessages';
+import DownloadMonitor from './components/DownloadMonitor';
 import './styles/App.css';
 
 const App = () => {
@@ -1324,6 +1325,13 @@ const App = () => {
           >
             SMS Messages
           </button>
+
+          <button 
+            className={activeTab === 'download-monitor' ? 'tab-button active' : 'tab-button'}
+            onClick={() => setActiveTab('download-monitor')}
+          >
+            Download Monitor
+          </button>
         </nav>
 
         {/* Loading State */}
@@ -1891,6 +1899,11 @@ const App = () => {
             {/* SMS Messages Tab */}
             {activeTab === 'sms' && (
               <SMSMessages />
+            )}
+
+            {/* Download Monitor Tab */}
+            {activeTab === 'download-monitor' && (
+              <DownloadMonitor />
             )}
           </>
         )}
