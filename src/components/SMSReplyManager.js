@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from './apiClient';
-import './SMSReplyManager.css';
+import api from '../services/apiClient';
+import '../styles/SMSReplyManager.css';
 
 const SMSReplyManager = () => {
   const [templates, setTemplates] = useState([]);

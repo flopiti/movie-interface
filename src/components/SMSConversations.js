@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from './apiClient';
-import './SMSConversations.css';
+import { api } from '../services/apiClient';
+import '../styles/SMSConversations.css';
 
 const SMSConversations = () => {
   const [conversations, setConversations] = useState([]);

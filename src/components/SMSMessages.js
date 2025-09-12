@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from './apiClient';
+import { api } from '../services/apiClient';
 import SMSReplyManager from './SMSReplyManager';
 import SMSConversations from './SMSConversations';
-import './SMSMessages.css';
+import '../styles/SMSMessages.css';
 
 const SMSMessages = () => {
   const [messages, setMessages] = useState([]);

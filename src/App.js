@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from './apiClient';
-import MovieComparison from './MovieComparison';
-import SMSMessages from './SMSMessages';
-import './App.css';
+import { api } from './services/apiClient';
+import MovieComparison from './components/MovieComparison';
+import SMSMessages from './components/SMSMessages';
+import './styles/App.css';
 
 const App = () => {
   const [files, setFiles] = useState([]);

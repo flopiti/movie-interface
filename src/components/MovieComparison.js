@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from './apiClient';
-import './MovieComparison.css';
+import api from '../services/apiClient';
+import '../styles/MovieComparison.css';
 
 const MovieComparison = () => {
   const [comparison, setComparison] = useState(null);
