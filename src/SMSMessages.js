@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from './apiClient';
 import SMSReplyManager from './SMSReplyManager';
 import SMSConversations from './SMSConversations';
@@ -15,18 +15,36 @@ const SMSMessages = () => {
   const [sendError, setSendError] = useState(null);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('conversations');
+  const messagesEndRef = useRef(null);
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
 
   // Load SMS status and messages on component mount
   useEffect(() => {
-    loadSMSData();
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(loadMessages, 30000);
+    loadSMSData(true); // Show loading on initial load
+    // Set up auto-refresh every 5 seconds (silent background refresh)
+    const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadSMSData = async () => {
+  // Auto-scroll to bottom when new messages arrive in messages tab
+  useEffect(() => {
+    if (activeTab === 'messages' && messagesEndRef.current) {
+      const currentMessageCount = messages.length;
+      
+      // Scroll if it's the first load or if new messages arrived
+      if (previousMessageCount === 0 || currentMessageCount > previousMessageCount) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      setPreviousMessageCount(currentMessageCount);
+    }
+  }, [messages, activeTab, previousMessageCount]);
+
+  const loadSMSData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       
       // Load status and messages in parallel
@@ -41,7 +59,9 @@ const SMSMessages = () => {
       setError(err.message);
       console.error('Error loading SMS data:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -177,7 +197,7 @@ const SMSMessages = () => {
           {error && (
             <div className="sms-error">
               <p>Error: {error}</p>
-              <button onClick={loadSMSData} className="retry-button">
+              <button onClick={() => loadSMSData(false)} className="retry-button">
                 Retry
               </button>
             </div>
@@ -242,7 +262,7 @@ const SMSMessages = () => {
           <div className="sms-messages-section">
             <div className="messages-header">
               <h3>Recent Messages ({messages.length})</h3>
-              <button onClick={loadMessages} className="refresh-button">
+              <button onClick={() => loadMessages()} className="refresh-button">
                 Refresh
               </button>
             </div>
@@ -276,6 +296,7 @@ const SMSMessages = () => {
                     )}
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>

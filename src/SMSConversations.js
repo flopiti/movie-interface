@@ -13,25 +13,35 @@ const SMSConversations = () => {
   const [sendError, setSendError] = useState(null);
   const [sendSuccess, setSendSuccess] = useState(false);
   const messagesEndRef = useRef(null);
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
 
   // Load conversations on component mount
   useEffect(() => {
-    loadConversations();
-    // Set up auto-refresh every 10 seconds
-    const interval = setInterval(loadConversations, 10000);
+    loadConversations(true); // Show loading on initial load
+    // Set up auto-refresh every 5 seconds (silent background refresh)
+    const interval = setInterval(() => loadConversations(false), 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change or new messages arrive
   useEffect(() => {
     if (selectedConversation && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const currentMessageCount = selectedConversation.messages?.length || 0;
+      
+      // Scroll if it's a new conversation or if new messages arrived
+      if (previousMessageCount === 0 || currentMessageCount > previousMessageCount) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      setPreviousMessageCount(currentMessageCount);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, previousMessageCount]);
 
-  const loadConversations = async () => {
+  const loadConversations = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       
       // Load status and conversations in parallel
@@ -51,7 +61,9 @@ const SMSConversations = () => {
       setError(err.message);
       console.error('Error loading conversations:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -162,7 +174,7 @@ const SMSConversations = () => {
       {error && (
         <div className="conversations-error">
           <p>Error: {error}</p>
-          <button onClick={loadConversations} className="retry-button">
+          <button onClick={() => loadConversations(false)} className="retry-button">
             Retry
           </button>
         </div>
@@ -179,7 +191,7 @@ const SMSConversations = () => {
         <div className="conversations-list">
           <div className="conversations-list-header">
             <h3>Conversations ({conversations.length})</h3>
-            <button onClick={loadConversations} className="refresh-button">
+            <button onClick={() => loadConversations(false)} className="refresh-button">
               Refresh
             </button>
           </div>
