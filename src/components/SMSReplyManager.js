@@ -9,7 +9,9 @@ const SMSReplyManager = () => {
     fallback_message: "",
     reply_delay_seconds: 0,
     max_replies_per_day: 10,
-    blocked_numbers: []
+    blocked_numbers: [],
+    use_chatgpt: false,
+    chatgpt_prompt: "You are a helpful assistant. Please respond to this SMS message in a friendly and concise way. Keep your response under 160 characters and appropriate for SMS communication.\n\nMessage: {message}\nFrom: {sender}"
   });
   
   // Phone settings state
@@ -285,6 +287,12 @@ const SMSReplyManager = () => {
             </span>
           </div>
           <div className="setting-item">
+            <label>ChatGPT:</label>
+            <span className={settings.use_chatgpt ? 'enabled' : 'disabled'}>
+              {settings.use_chatgpt ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="setting-item">
             <label>Fallback Message:</label>
             <span>{settings.fallback_message}</span>
           </div>
@@ -507,6 +515,33 @@ const SMSReplyManager = () => {
                   />
                   Enable Auto Reply
                 </label>
+              </div>
+              
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.use_chatgpt}
+                    onChange={(e) => setSettingsForm({...settingsForm, use_chatgpt: e.target.checked})}
+                  />
+                  Use ChatGPT for Responses
+                </label>
+                <small className="help-text">
+                  When enabled, ChatGPT will generate responses instead of using templates. Requires OpenAI API key to be configured.
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label>ChatGPT Prompt</label>
+                <textarea
+                  value={settingsForm.chatgpt_prompt}
+                  onChange={(e) => setSettingsForm({...settingsForm, chatgpt_prompt: e.target.value})}
+                  rows="6"
+                  placeholder="You are a helpful assistant. Please respond to this SMS message in a friendly and concise way. Keep your response under 160 characters and appropriate for SMS communication.\n\nMessage: {message}\nFrom: {sender}"
+                />
+                <small className="help-text">
+                  This prompt will be sent to ChatGPT before every message. Use {'{message}'} for the incoming message and {'{sender}'} for the sender's phone number.
+                </small>
               </div>
               
               <div className="form-group">
