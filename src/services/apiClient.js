@@ -257,7 +257,7 @@ export const api = {
     getConversations: (limit = 100) => api.get('/api/sms/conversations', { limit }),
     
     // Delete a conversation by phone number
-    deleteConversation: (phoneNumber) => api.delete(`/api/sms/conversations/${phoneNumber}`),
+    deleteConversation: (phoneNumber) => api.delete(`/api/sms/conversations/${encodeURIComponent(phoneNumber)}`),
     
     // Send an SMS message
     send: (to, message) => api.post('/api/sms/send', { to, message }),

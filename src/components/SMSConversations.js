@@ -55,6 +55,7 @@ const SMSConversations = () => {
       setStatus(statusData);
       setConversations(conversationsData.conversations || []);
       
+      
       // If no conversation is selected, select the first one
       if (!selectedConversation && conversationsData.conversations?.length > 0) {
         setSelectedConversation(conversationsData.conversations[0]);
@@ -104,10 +105,6 @@ const SMSConversations = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete the conversation with ${formatPhoneNumber(phoneNumber)}? This action cannot be undone.`)) {
-      return;
-    }
-
     try {
       setDeletingConversation(phoneNumber);
       setDeleteError(null);
@@ -123,7 +120,7 @@ const SMSConversations = () => {
       await loadConversations(false);
       
     } catch (err) {
-      setDeleteError(err.message);
+      setDeleteError(err.message || 'Failed to delete conversation');
     } finally {
       setDeletingConversation(null);
     }
@@ -160,6 +157,8 @@ const SMSConversations = () => {
     }
   };
 
+
+ console.log( selectedConversation?.messages)
   const formatConversationTime = (timestamp) => {
     if (!timestamp) return '';
     try {
@@ -317,19 +316,20 @@ const SMSConversations = () => {
               </div>
 
               <div className="chat-messages">
-                {selectedConversation.messages.map((message, index) => (
-                  <div
-                    key={message.id || index}
-                    className={`message-bubble ${message.is_from_us ? 'from-us' : 'from-them'}`}
-                  >
-                    <div className="message-content">
-                      {message.body}
+                {selectedConversation?.messages
+                  ?.map((message, index) => (
+                    <div
+                      key={message.id || index}
+                      className={`message-bubble ${message.is_from_us ? 'from-us' : 'from-them'}`}
+                    >
+                      <div className="message-content">
+                        {message.body}
+                      </div>
+                      <div className="message-time">
+                        {formatTimestamp(message.timestamp)}
+                      </div>
                     </div>
-                    <div className="message-time">
-                      {formatTimestamp(message.timestamp)}
-                    </div>
-                  </div>
-                ))}
+                  ))}
                 <div ref={messagesEndRef} />
               </div>
 
